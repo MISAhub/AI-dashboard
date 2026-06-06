@@ -45,6 +45,21 @@ body {
   padding: 6px 10px;
 }
 
+.wa-btn {
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  opacity: 0.9;
+  background-color: #2feb35
+}
+
 /* Header */
 .app-header {
   display: flex;
