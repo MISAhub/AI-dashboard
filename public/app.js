@@ -23,6 +23,7 @@ let activeTab = 'tab-input';
 let currentEditingCell = null;
 let selectedPopoverStatus = 'Not Applicable';
 let previousInputValues = {};
+let lastServerSyncStr = "";
 
 // Active filter state (shared across both tabs)
 let filterState = { region: '', tower: '', assessment: '', initiative: '' };
@@ -83,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('popoverFte').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleSavePopover();
   });
+
+  // Start automatic polling every 5 seconds
+  setInterval(pollServer, 5000);
 });
 
 function setupNavigation() {
@@ -130,6 +134,8 @@ async function loadData() {
       if (!row.initiativeType) row.initiativeType = '';
     });
 
+    lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
+
     showStatus('Connected & Synced', 'success');
     renderInputTable();
   } catch (err) {
@@ -151,11 +157,38 @@ async function saveData() {
     if (res.ok) {
       showStatus('Saved & Synced', 'success');
       localStorage.setItem('ai_penetration_state', JSON.stringify(state));
+      lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
       downloadJsonState();
     } else throw new Error();
   } catch {
     showStatus('Failed to save', 'error');
     localStorage.setItem('ai_penetration_state', JSON.stringify(state));
+  }
+}
+
+async function pollServer() {
+  if (document.hidden) return;
+  const isEditing = document.activeElement && 
+                    (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') ||
+                    document.getElementById('cellPopover').classList.contains('active');
+  if (isEditing) return;
+
+  try {
+    const res = await fetch('/api/data?_cb=' + Date.now());
+    if (!res.ok) return;
+    const loaded = await res.json();
+    const loadedStr = JSON.stringify({ rows: loaded.rows, cellData: loaded.cellData, assets: loaded.assets, owners: loaded.owners, towers: loaded.towers, regions: loaded.regions, initiativeTypes: loaded.initiativeTypes, customInsights: loaded.customInsights });
+    
+    if (loadedStr !== lastServerSyncStr) {
+      state = loaded;
+      lastServerSyncStr = loadedStr;
+      if (activeTab === 'tab-insights') renderInsights();
+      else if (activeTab === 'tab-assets') renderAssetGrid();
+      else renderInputTable();
+      showStatus('Connected & Synced', 'success');
+    }
+  } catch (err) {
+    console.error("Polling error:", err);
   }
 }
 
