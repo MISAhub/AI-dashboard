@@ -1,0 +1,140 @@
+{
+  "assets": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M"
+  ],
+  "owners": {
+    "Owner A": "owner.a@company.com",
+    "Owner B": "owner.b@company.com",
+    "Owner C": "owner.c@company.com"
+  },
+  "rows": [
+    {
+      "id": "row_1",
+      "client": "Client X",
+      "tower": "Tower 1",
+      "baseFte": 10,
+      "assessment": "Completed",
+      "pipelineFte": 12,
+      "decision": "Deployed",
+      "initiative": "C",
+      "estimatedFteBenefit": 5,
+      "implementationCost": 15000,
+      "dollarSavings": 250000,
+      "benchmark": 25,
+      "owner": "Owner A"
+    },
+    {
+      "id": "row_2",
+      "client": "Client X",
+      "tower": "Tower 2",
+      "baseFte": 20,
+      "assessment": "In Progress",
+      "pipelineFte": 0,
+      "decision": "Awaiting client approvals",
+      "initiative": "",
+      "estimatedFteBenefit": 0,
+      "implementationCost": 0,
+      "dollarSavings": 0,
+      "benchmark": 15,
+      "owner": "Owner B"
+    },
+    {
+      "id": "row_3",
+      "client": "Client X",
+      "tower": "Tower 3",
+      "baseFte": 5,
+      "assessment": "No Scale",
+      "pipelineFte": 0,
+      "decision": "Not Applicable",
+      "initiative": "",
+      "estimatedFteBenefit": 0,
+      "implementationCost": 0,
+      "dollarSavings": 0,
+      "benchmark": 20,
+      "owner": "Owner A"
+    },
+    {
+      "id": "row_4",
+      "client": "Client X",
+      "tower": "Tower 4",
+      "baseFte": 8,
+      "assessment": "Completed",
+      "pipelineFte": 4,
+      "decision": "In progress",
+      "initiative": "",
+      "estimatedFteBenefit": 0,
+      "implementationCost": 0,
+      "dollarSavings": 0,
+      "benchmark": 30,
+      "owner": "Owner C"
+    },
+    {
+      "id": "row_5",
+      "client": "Client Y",
+      "tower": "Tower 1",
+      "baseFte": 15,
+      "assessment": "Completed",
+      "pipelineFte": 4,
+      "decision": "Deployed",
+      "initiative": "A",
+      "estimatedFteBenefit": 3,
+      "implementationCost": 12000,
+      "dollarSavings": 150000,
+      "benchmark": 25,
+      "owner": "Owner B"
+    },
+    {
+      "id": "row_6",
+      "client": "Client Z",
+      "tower": "Tower 1",
+      "baseFte": 25,
+      "assessment": "Not Started",
+      "pipelineFte": 0,
+      "decision": "Awaiting client approvals",
+      "initiative": "",
+      "estimatedFteBenefit": 0,
+      "implementationCost": 0,
+      "dollarSavings": 0,
+      "benchmark": 25,
+      "owner": "Owner C"
+    }
+  ],
+  "cellData": {
+    "row_1::C": {
+      "fte": 5,
+      "status": "Deployed"
+    },
+    "row_1::F": {
+      "fte": 4,
+      "status": "In progress"
+    },
+    "row_1::H": {
+      "fte": 2,
+      "status": "Awaiting client approvals"
+    },
+    "row_1::J": {
+      "fte": 1,
+      "status": "Potential but lack CBA"
+    },
+    "row_5::A": {
+      "fte": 3,
+      "status": "Deployed"
+    },
+    "row_5::D": {
+      "fte": 1,
+      "status": "In progress"
+    }
+  }
+}

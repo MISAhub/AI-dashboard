@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>F&amp;A AI Penetration Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1>AI Penetration &amp; Assessment Portfolio</h1>
+        <span class="sub-title">Finance &amp; Accounting Operations</span>
+      </div>
+      <div class="header-right">
+        <div class="sync-status" id="syncStatus">Connected &amp; Synced</div>
+        <button id="downloadXlsBtn" class="btn btn-secondary">Download XLS</button>
+        <button id="downloadPptBtn" class="btn btn-secondary">Download PPT</button>
+        <button id="saveBtn" class="btn btn-primary">Save to File</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="app-nav">
+      <button class="nav-tab active" data-tab="tab-input">Input Dashboard</button>
+      <button class="nav-tab" data-tab="tab-assets">Asset Mapping Grid</button>
+      <button class="nav-tab" data-tab="tab-insights">Totals &amp; Insights</button>
+    </nav>
+
+    <main class="app-main">
+
+      <!-- TAB 1: INPUT DASHBOARD -->
+      <section id="tab-input" class="tab-content active">
+        <div class="panel-header">
+          <h2>FTE Baseline &amp; Assessment Inputs</h2>
+          <div class="panel-actions">
+            <button class="btn btn-primary" onclick="handleAddRow()">+ Add Row</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-region')">&#127758; Regions</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-tower')">&#127968; Towers</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-type')">&#127381; Types</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-asset')">Assets</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-owner')">Owners</button>
+            <button class="btn btn-template" onclick="downloadBulkTemplate()">&#128229; Template</button>
+            <button id="bulkUploadBtn" class="btn btn-secondary">&#128196; Bulk Upload</button>
+            <input type="file" id="bulkUploadInput" accept=".xlsx,.xls,.csv" style="display:none;">
+          </div>
+        </div>
+        <!-- Filter Bar -->
+        <div class="filter-bar" id="filterBarInput">
+          <span class="filter-label">&#128269; Filter:</span>
+          <select id="filter-region" onchange="applyFilters()" title="Filter by Region">
+            <option value="">All Regions</option>
+          </select>
+          <select id="filter-tower" onchange="applyFilters()" title="Filter by Tower">
+            <option value="">All Towers</option>
+          </select>
+          <select id="filter-assessment" onchange="applyFilters()" title="Filter by Assessment Status">
+            <option value="">Assessment status</option>
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="No Scale">No Scale</option>
+          </select>
+          <select id="filter-initiative" onchange="applyFilters()" title="Filter by Asset">
+            <option value="">Asset</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" onclick="clearFilters()">&#10005; Clear</button>
+          <span class="filter-count" id="filterCount"></span>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="inputTable">
+            <thead>
+              <tr id="inputTableHead"></tr>
+            </thead>
+            <tbody id="inputTableBody"></tbody>
+            <tfoot><tr id="inputTableTotals"></tr></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 2: ASSET MAPPING GRID -->
+      <section id="tab-assets" class="tab-content">
+        <div class="panel-header">
+          <div class="header-info">
+            <h2>AI Asset Applicability &amp; Deployment Matrix</h2>
+            <span class="info-tag">Assets: <strong id="assetCount">0</strong> / 100 max</span>
+          </div>
+        </div>
+        <!-- Filter Bar for Asset Grid -->
+        <div class="filter-bar">
+          <span class="filter-label">&#128269; Filter:</span>
+          <select id="filter-region-grid" onchange="applyFilters()" title="Filter by Region">
+            <option value="">All Regions</option>
+          </select>
+          <select id="filter-tower-grid" onchange="applyFilters()" title="Filter by Tower">
+            <option value="">All Towers</option>
+          </select>
+          <select id="filter-assessment-grid" onchange="applyFilters()" title="Filter by Status">
+            <option value="">Assessment status</option>
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="No Scale">No Scale</option>
+          </select>
+          <select id="filter-initiative-grid" onchange="applyFilters()" title="Filter by Asset">
+            <option value="">Asset</option>
+          </select>
+          <button class="btn btn-sm btn-secondary" onclick="clearFilters()">&#10005; Clear</button>
+        </div>
+        <div class="legend-bar">
+          <div class="legend-item"><span class="legend-color legend-deployed"></span> Deployed</div>
+          <div class="legend-item"><span class="legend-color legend-potential"></span> Potential but lack CBA</div>
+          <div class="legend-item"><span class="legend-color legend-inprogress"></span> In progress</div>
+          <div class="legend-item"><span class="legend-color legend-awaiting"></span> Awaiting client approvals</div>
+          <div class="legend-item"><span class="legend-color legend-na"></span> Not Applicable</div>
+        </div>
+        <div class="grid-container">
+          <table class="grid-table" id="assetGridTable">
+            <thead><tr id="gridHeaderRow"></tr></thead>
+            <tbody id="gridBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 3: TOTALS & INSIGHTS -->
+      <section id="tab-insights" class="tab-content insights-tab-layout">
+
+        <!-- Row 1: Asset Penetration Status Band -->
+        <div class="penetration-band" id="penetrationBand">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Row 2: KPI Summary Cards -->
+        <div class="kpi-grid-top">
+          <div class="kpi-card">
+            <span class="kpi-label">Baseline Headcount</span>
+            <span class="kpi-value" id="kpiBaseline">0</span>
+            <span class="kpi-desc">Total F&amp;A FTEs</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Agentic Potential</span>
+            <span class="kpi-value" id="kpiPipeline">0</span>
+            <span class="kpi-desc">Target FTE Release</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Assessment Progress</span>
+            <span class="kpi-value" id="kpiAssessments">0%</span>
+            <span class="kpi-desc">Completed assessments</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Overall Release Yield</span>
+            <span class="kpi-value" id="kpiYield">0%</span>
+            <span class="kpi-desc">vs Benchmarks</span>
+          </div>
+          <div class="kpi-card kpi-highlight">
+            <span class="kpi-label">Deployed FTE</span>
+            <span class="kpi-value" id="kpiDeployed">0</span>
+            <span class="kpi-desc">Live in Production</span>
+          </div>
+          <div class="kpi-card kpi-highlight-warn">
+            <span class="kpi-label">Potential / Lack CBA</span>
+            <span class="kpi-value" id="kpiPotential">0</span>
+            <span class="kpi-desc">FTE Awaiting Approval</span>
+          </div>
+        </div>
+
+        <!-- Row 3: Charts (left) + Insights (right) -->
+        <div class="insights-main-row">
+          <!-- Charts 2×2 grid -->
+          <div class="charts-panel">
+            <div class="chart-grid-2x2">
+              <div class="chart-cell">
+                <div class="chart-cell-title">&#128202; Pipeline vs Benchmark by Tower</div>
+                <canvas id="insightsChart"></canvas>
+              </div>
+              <div class="chart-cell">
+                <div class="chart-cell-title">&#127775; Client Approval Distribution</div>
+                <canvas id="approvalChart"></canvas>
+              </div>
+              <div class="chart-cell">
+                <div class="chart-cell-title">&#127919; Asset Penetration by Client (Top 10)</div>
+                <canvas id="heatmapChart"></canvas>
+              </div>
+              <div class="chart-cell">
+                <div class="chart-cell-title">&#127881; High Opportunity Targets (Potential &amp; Lack CBA)</div>
+                <canvas id="potentialChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Editable Insights Panel -->
+          <div class="insights-right-panel">
+            <div class="insights-panel-header">
+              <h2>&#128161; Portfolio Insights</h2>
+              <button class="btn btn-sm btn-primary" onclick="addCustomInsight()">+ Add</button>
+            </div>
+            <div id="addInsightForm" class="add-insight-form" style="display:none;">
+              <input type="text" id="newInsightTitle" placeholder="Insight title..." class="insight-text-input">
+              <textarea id="newInsightDesc" placeholder="Description..." class="insight-textarea"></textarea>
+              <div class="insight-type-row">
+                <label>Type:</label>
+                <select id="newInsightType">
+                  <option value="info">&#128309; Info</option>
+                  <option value="success">&#128994; Positive</option>
+                  <option value="warning">&#128992; Warning</option>
+                </select>
+                <button class="btn btn-sm btn-primary" onclick="saveNewInsight()">Save</button>
+                <button class="btn btn-sm btn-secondary" onclick="cancelAddInsight()">Cancel</button>
+              </div>
+            </div>
+            <div class="insights-list" id="insightsList"></div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- Region Master Modal -->
+  <div id="modal-region" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>&#127758; Region Master List</h3>
+        <button class="modal-close" onclick="closeModal('modal-region')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Regions appear as a dropdown in the Region column. Deleting a region clears it from all rows.</p>
+        <div class="form-group">
+          <label>Add Region:</label>
+          <div class="input-btn-group">
+            <input type="text" id="newRegionName" placeholder="e.g. APAC, EMEA, Americas, UK">
+            <button class="btn btn-primary" onclick="handleAddRegion()">Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Region List:</label>
+          <div class="asset-list-scroll" id="modalRegionList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tower Master Modal -->
+  <div id="modal-tower" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>&#127968; Tower Master List</h3>
+        <button class="modal-close" onclick="closeModal('modal-tower')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Deleting a tower removes it from ALL rows and their asset data.</p>
+        <div class="form-group">
+          <label>Add Tower:</label>
+          <div class="input-btn-group">
+            <input type="text" id="newTowerName" placeholder="e.g. PTP, RTR, OTC, FP&amp;A">
+            <button class="btn btn-primary" onclick="handleAddTower()">Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Tower List:</label>
+          <div class="asset-list-scroll" id="modalTowerList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Initiative Type Master Modal -->
+  <div id="modal-type" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>&#127381; Initiative Type Master (max 4)</h3>
+        <button class="modal-close" onclick="closeModal('modal-type')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Define up to 4 initiative type labels. These appear as a dropdown in the "Type" column.</p>
+        <div class="form-group">
+          <label>Add Type:</label>
+          <div class="input-btn-group">
+            <input type="text" id="newTypeName" placeholder="e.g. Agentic, Co-Pilot, RPA, Analytics">
+            <button class="btn btn-primary" onclick="handleAddType()">Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Current Types (<span id="typeCount">0</span>/4):</label>
+          <div class="asset-list-scroll" id="modalTypeList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Asset Column Modal -->
+  <div id="modal-asset" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Manage Assets (Columns)</h3>
+        <button class="modal-close" onclick="closeModal('modal-asset')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="newAssetName">Add AI Asset (Column):</label>
+          <div class="input-btn-group">
+            <input type="text" id="newAssetName" placeholder="Asset Identifier/Name">
+            <button class="btn btn-primary" onclick="handleAddAsset()">Add Column</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Asset Registry (Click &times; to delete):</label>
+          <div class="asset-list-scroll" id="modalAssetList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Owner Modal -->
+  <div id="modal-owner" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Owner Email Master Directory</h3>
+        <button class="modal-close" onclick="closeModal('modal-owner')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Add New Owner:</label>
+          <div class="input-btn-group" style="margin-bottom:5px;">
+            <input type="text" id="newOwnerName" placeholder="Owner Name (e.g. John Doe)">
+          </div>
+          <div class="input-btn-group">
+            <input type="email" id="newOwnerEmail" placeholder="Email (e.g. john.doe@company.com)">
+            <button class="btn btn-primary" onclick="handleAddOwner()">Add Owner</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Registered Owners Directory:</label>
+          <div class="asset-list-scroll" id="modalOwnerList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cell Popover Editor -->
+  <div id="cellPopover" class="cell-popover">
+    <div class="popover-title" id="popoverTitle">Asset Allocation</div>
+    <div class="form-group">
+      <label for="popoverFte">FTE Count:</label>
+      <input type="number" id="popoverFte" step="0.5" placeholder="0" autofocus>
+    </div>
+    <div class="form-group">
+      <label>Legend Color:</label>
+      <div class="color-badge-container">
+        <div class="color-badge status-deployed" onclick="selectPopoverStatus('Deployed')" title="Deployed">D</div>
+        <div class="color-badge status-potential" onclick="selectPopoverStatus('Potential but lack CBA')" title="Potential but lack CBA">P</div>
+        <div class="color-badge status-inprogress" onclick="selectPopoverStatus('In progress')" title="In progress">IP</div>
+        <div class="color-badge status-awaiting" onclick="selectPopoverStatus('Awaiting client approvals')" title="Awaiting client approvals">A</div>
+        <div class="color-badge status-na" onclick="selectPopoverStatus('Not Applicable')" title="Not Applicable">N/A</div>
+      </div>
+    </div>
+    <div class="popover-footer">
+      <button class="btn btn-sm btn-secondary" onclick="closePopover()">Cancel</button>
+      <button class="btn btn-sm btn-primary" onclick="handleSavePopover()">Save</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
