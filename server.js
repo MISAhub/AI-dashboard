@@ -35,6 +35,7 @@ const defaultData = {
 
 // GET data
 app.get('/api/data', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   if (fs.existsSync(DATA_FILE)) {
     fs.readFile(DATA_FILE, 'utf8', (err, data) => {
       if (err) {

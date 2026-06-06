@@ -1,3 +1,10 @@
+(function () {
+  const pageUrl = "https://ideal-broccoli-7x595pwggj92pj76.github.dev";
+  document.getElementById("wa-share")?.addEventListener("click", function () {
+    window.location.href = "https://wa.me/?text=" + encodeURIComponent(pageUrl);
+  });
+})();
+
 // ==========================================
 // STATE
 // ==========================================
@@ -25,23 +32,23 @@ let sortState = { col: null, dir: null };
 
 // Sortable columns config: { key, label }
 const SORTABLE_COLS = [
-  { key: 'client',             label: 'Client Name' },
-  { key: 'region',             label: 'Region' },
-  { key: 'tower',              label: 'Tower' },
-  { key: 'baseFte',            label: 'Baseline FTE' },
-  { key: 'assessment',         label: 'Assessment Status' },
-  { key: 'pipelineFte',        label: 'Agentic Potential FTE' },
-  { key: 'decision',           label: 'Client Approval for AI' },
-  { key: 'initiative',         label: 'Proposed Asset' },
-  { key: 'initiativeType',     label: 'Type' },
-  { key: 'estimatedFteBenefit',label: 'Est. FTE Benefit' },
+  { key: 'client', label: 'Client Name' },
+  { key: 'region', label: 'Region' },
+  { key: 'tower', label: 'Tower' },
+  { key: 'baseFte', label: 'Baseline FTE' },
+  { key: 'assessment', label: 'Assessment Status' },
+  { key: 'pipelineFte', label: 'Agentic Potential FTE' },
+  { key: 'decision', label: 'Client Approval for AI' },
+  { key: 'initiative', label: 'Proposed Asset' },
+  { key: 'initiativeType', label: 'Type' },
+  { key: 'estimatedFteBenefit', label: 'Est. FTE Benefit' },
   { key: 'implementationCost', label: 'Impl. Cost ($)' },
-  { key: 'dollarSavings',      label: '$ Savings' },
-  { key: '_remaining',         label: 'Remaining Pot.' },
-  { key: 'owner',              label: 'Owner' },
-  { key: '_actualPct',         label: 'Release %' },
-  { key: 'benchmark',          label: 'Benchmark %' },
-  { key: '_variance',          label: 'Variance %' },
+  { key: 'dollarSavings', label: '$ Savings' },
+  { key: '_remaining', label: 'Remaining Pot.' },
+  { key: 'owner', label: 'Owner' },
+  { key: '_actualPct', label: 'Release %' },
+  { key: 'benchmark', label: 'Benchmark %' },
+  { key: '_variance', label: 'Variance %' },
 ];
 
 // ==========================================
@@ -63,8 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     const popover = document.getElementById('cellPopover');
     if (popover.classList.contains('active') &&
-        !popover.contains(e.target) &&
-        !e.target.classList.contains('asset-cell')) {
+      !popover.contains(e.target) &&
+      !e.target.classList.contains('asset-cell')) {
       closePopover();
     }
     // Hide suggestion dropdowns
@@ -100,7 +107,7 @@ function setupNavigation() {
 // ==========================================
 async function loadData() {
   try {
-    const res = await fetch('/api/data');
+    const res = await fetch('/api/data?_cb=' + Date.now());
     const loaded = await res.json();
     state = loaded;
     if (!state.assets) state.assets = [];
@@ -110,15 +117,15 @@ async function loadData() {
     if (!state.towers || state.towers.length === 0) state.towers = ['PTP', 'RTR', 'OTC', 'FP&A'];
     if (!state.regions || state.regions.length === 0) state.regions = ['APAC', 'EMEA', 'Americas'];
     if (!state.initiativeTypes) state.initiativeTypes = [];
-    if (!state.customInsights)  state.customInsights  = [];
+    if (!state.customInsights) state.customInsights = [];
 
     state.rows.forEach(row => {
-      if (row.pipelineFte === undefined)        row.pipelineFte        = 0;
+      if (row.pipelineFte === undefined) row.pipelineFte = 0;
       if (row.estimatedFteBenefit === undefined) row.estimatedFteBenefit = 0;
-      if (row.implementationCost === undefined)  row.implementationCost  = 0;
-      if (row.dollarSavings === undefined)       row.dollarSavings       = 0;
-      if (!row.owner)         row.owner         = 'None';
-      if (!row.region)        row.region        = '';
+      if (row.implementationCost === undefined) row.implementationCost = 0;
+      if (row.dollarSavings === undefined) row.dollarSavings = 0;
+      if (!row.owner) row.owner = 'None';
+      if (!row.region) row.region = '';
       if (row.decision === 'Pending Review') row.decision = '';
       if (!row.initiativeType) row.initiativeType = '';
     });
@@ -163,7 +170,7 @@ function showStatus(text, type) {
 // HELPERS
 // ==========================================
 function escHtml(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function isAssessmentActive(a) {
@@ -252,7 +259,7 @@ function downloadJsonState() {
   const filename = `AI_Penetration_Data_${dt.date}.json`;
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
   const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href",     dataStr);
+  downloadAnchor.setAttribute("href", dataStr);
   downloadAnchor.setAttribute("download", filename);
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
@@ -319,8 +326,8 @@ function getActiveFilters() {
   // Read from whichever filter bar is active
   const sfx = activeTab === 'tab-assets' ? '-grid' : '';
   return {
-    region:     (document.getElementById(`filter-region${sfx}`)     || {}).value || '',
-    tower:      (document.getElementById(`filter-tower${sfx}`)      || {}).value || '',
+    region: (document.getElementById(`filter-region${sfx}`) || {}).value || '',
+    tower: (document.getElementById(`filter-tower${sfx}`) || {}).value || '',
     assessment: (document.getElementById(`filter-assessment${sfx}`) || {}).value || '',
     initiative: (document.getElementById(`filter-initiative${sfx}`) || {}).value || '',
   };
@@ -351,7 +358,7 @@ function applyFilters() {
 function clearFilters() {
   filterState = { region: '', tower: '', assessment: '', initiative: '' };
   ['', '-grid'].forEach(sfx => {
-    ['filter-region','filter-tower','filter-assessment','filter-initiative'].forEach(id => {
+    ['filter-region', 'filter-tower', 'filter-assessment', 'filter-initiative'].forEach(id => {
       const el = document.getElementById(`${id}${sfx}`);
       if (el) el.value = '';
     });
@@ -363,10 +370,10 @@ function clearFilters() {
 function getFilteredRows() {
   const f = filterState;
   return state.rows.filter(row => {
-    if (f.region     && row.region     !== f.region)     return false;
-    if (f.tower      && row.tower      !== f.tower)      return false;
-    if (f.assessment && row.assessment !== f.assessment)  return false;
-    if (f.initiative && row.initiative !== f.initiative)  return false;
+    if (f.region && row.region !== f.region) return false;
+    if (f.tower && row.tower !== f.tower) return false;
+    if (f.assessment && row.assessment !== f.assessment) return false;
+    if (f.initiative && row.initiative !== f.initiative) return false;
     return true;
   });
 }
@@ -424,13 +431,13 @@ function renderInputTableHeader() {
   tr.innerHTML = '';
 
   const sortableCols = new Set([
-    'client','region','tower','decision','initiative','estimatedFteBenefit','owner'
+    'client', 'region', 'tower', 'decision', 'initiative', 'estimatedFteBenefit', 'owner'
   ]);
 
   SORTABLE_COLS.forEach(col => {
     const th = document.createElement('th');
     th.style.whiteSpace = 'nowrap';
-    if (col.key === 'tower')  th.style.minWidth = '90px';
+    if (col.key === 'tower') th.style.minWidth = '90px';
     if (col.key === 'region') th.style.minWidth = '72px';
     const isSortable = sortableCols.has(col.key);
     const isActive = sortState.col === col.key;
@@ -474,13 +481,13 @@ function renderInputTable() {
 
     totalBaseline += parseFloat(row.baseFte || 0);
     totalPipeline += parseFloat(row.pipelineFte || 0);
-    totalSavings  += parseFloat(row.dollarSavings || 0);
-    totalCost     += parseFloat(row.implementationCost || 0);
+    totalSavings += parseFloat(row.dollarSavings || 0);
+    totalCost += parseFloat(row.implementationCost || 0);
 
-    const actualPct   = row.baseFte > 0 ? (row.pipelineFte / row.baseFte) : 0;
+    const actualPct = row.baseFte > 0 ? (row.pipelineFte / row.baseFte) : 0;
     const benchmarkPct = (row.benchmark || 0) / 100;
-    const variance    = actualPct - benchmarkPct;
-    const savingsVal  = parseFloat(row.dollarSavings || 0);
+    const variance = actualPct - benchmarkPct;
+    const savingsVal = parseFloat(row.dollarSavings || 0);
 
     // Owner dropdown
     let ownerOpts = `<option value="None" ${row.owner === 'None' || !row.owner ? 'selected' : ''}>None</option>`;
@@ -515,7 +522,7 @@ function renderInputTable() {
 
     // Initiative Type dropdown
     const typeOpts = [`<option value="" ${!row.initiativeType ? 'selected' : ''}>-- Select --</option>`,
-      ...state.initiativeTypes.map(t => `<option value="${escHtml(t)}" ${row.initiativeType === t ? 'selected' : ''}>${escHtml(t)}</option>`)
+    ...state.initiativeTypes.map(t => `<option value="${escHtml(t)}" ${row.initiativeType === t ? 'selected' : ''}>${escHtml(t)}</option>`)
     ].join('');
 
     const dis = active ? '' : 'disabled';
@@ -546,10 +553,10 @@ function renderInputTable() {
       </td>
       <td>
         <select onchange="handleAssessmentChange('${rowId}', this.value)">
-          <option value="Not Started" ${row.assessment==='Not Started'?'selected':''}>Not Started</option>
-          <option value="In Progress" ${row.assessment==='In Progress'?'selected':''}>In Progress</option>
-          <option value="Completed"   ${row.assessment==='Completed'  ?'selected':''}>Completed</option>
-          <option value="No Scale"    ${row.assessment==='No Scale'   ?'selected':''}>No Scale</option>
+          <option value="Not Started" ${row.assessment === 'Not Started' ? 'selected' : ''}>Not Started</option>
+          <option value="In Progress" ${row.assessment === 'In Progress' ? 'selected' : ''}>In Progress</option>
+          <option value="Completed"   ${row.assessment === 'Completed' ? 'selected' : ''}>Completed</option>
+          <option value="No Scale"    ${row.assessment === 'No Scale' ? 'selected' : ''}>No Scale</option>
         </select>
       </td>
       <td>
@@ -866,7 +873,7 @@ function handleAddRow() {
   if (!set.has(clientName) && uniqueCount >= 500) { alert('500 client limit reached.'); return; }
 
   state.rows.push({
-    id: `row_${Date.now()}_${Math.floor(Math.random()*9999)}`,
+    id: `row_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
     client: clientName,
     tower: state.towers[0] || 'PTP',
     baseFte: 10,
@@ -959,7 +966,7 @@ function openCellPopover(event, rowId, assetId) {
   updatePopoverBadgeSelection();
   const rect = event.currentTarget.getBoundingClientRect();
   popover.style.left = `${rect.left + window.scrollX - 80}px`;
-  popover.style.top  = `${rect.bottom + window.scrollY + 5}px`;
+  popover.style.top = `${rect.bottom + window.scrollY + 5}px`;
   popover.classList.add('active');
   setTimeout(() => document.getElementById('popoverFte').focus(), 50);
 }
@@ -1019,9 +1026,9 @@ function calcAssetPenetration() {
 
   Object.values(state.cellData).forEach(cell => {
     const v = parseFloat(cell.fte || 0);
-    if (cell.status === 'Deployed')                  deployedFTE   += v;
-    else if (cell.status === 'In progress')           inProgressFTE += v;
-    else if (cell.status === 'Potential but lack CBA') potentialFTE  += v;
+    if (cell.status === 'Deployed') deployedFTE += v;
+    else if (cell.status === 'In progress') inProgressFTE += v;
+    else if (cell.status === 'Potential but lack CBA') potentialFTE += v;
   });
 
   // Per-tower penetration
@@ -1035,7 +1042,7 @@ function calcAssetPenetration() {
         const cell = state.cellData[`${row.id}::${asset}`];
         if (!cell) return;
         const v = parseFloat(cell.fte || 0);
-        if (cell.status === 'Deployed')    tDep += v;
+        if (cell.status === 'Deployed') tDep += v;
         else if (cell.status === 'In progress') tIP += v;
       });
     });
@@ -1110,12 +1117,12 @@ function renderInsights() {
   const pen = calcAssetPenetration();
 
   // ---- KPI cards ----
-  document.getElementById('kpiBaseline').textContent    = totalBaseline;
-  document.getElementById('kpiPipeline').textContent    = totalPipeline;
+  document.getElementById('kpiBaseline').textContent = totalBaseline;
+  document.getElementById('kpiPipeline').textContent = totalPipeline;
   document.getElementById('kpiAssessments').textContent = `${totalRows > 0 ? ((completedCount / totalRows) * 100).toFixed(0) : 0}%`;
-  document.getElementById('kpiYield').textContent       = `${totalBaseline > 0 ? ((totalPipeline / totalBaseline) * 100).toFixed(1) : 0}%`;
-  document.getElementById('kpiDeployed').textContent    = pen.deployedFTE.toFixed(0);
-  document.getElementById('kpiPotential').textContent   = pen.potentialFTE.toFixed(0);
+  document.getElementById('kpiYield').textContent = `${totalBaseline > 0 ? ((totalPipeline / totalBaseline) * 100).toFixed(1) : 0}%`;
+  document.getElementById('kpiDeployed').textContent = pen.deployedFTE.toFixed(0);
+  document.getElementById('kpiPotential').textContent = pen.potentialFTE.toFixed(0);
 
   // ---- Penetration band ----
   renderPenetrationBand(pen);
@@ -1135,16 +1142,16 @@ function renderTowerChart(towerStats) {
   destroyChart('tower');
   const ctx = document.getElementById('insightsChart');
   if (!ctx) return;
-  const labels  = Object.keys(towerStats);
-  const actual  = labels.map(l => towerStats[l].base > 0 ? ((towerStats[l].pipe / towerStats[l].base) * 100).toFixed(1) : 0);
-  const bench   = labels.map(l => towerStats[l].benchmark);
+  const labels = Object.keys(towerStats);
+  const actual = labels.map(l => towerStats[l].base > 0 ? ((towerStats[l].pipe / towerStats[l].base) * 100).toFixed(1) : 0);
+  const bench = labels.map(l => towerStats[l].benchmark);
   chartInstances['tower'] = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
       datasets: [
         { label: 'Actual Release %', data: actual, backgroundColor: 'rgba(79,129,189,0.85)', borderColor: '#1f497d', borderWidth: 1 },
-        { label: 'Benchmark %',      data: bench,  backgroundColor: 'rgba(255,192,0,0.85)',  borderColor: '#e27c00', borderWidth: 1 }
+        { label: 'Benchmark %', data: bench, backgroundColor: 'rgba(255,192,0,0.85)', borderColor: '#e27c00', borderWidth: 1 }
       ]
     },
     options: {
@@ -1163,12 +1170,12 @@ function renderApprovalChart() {
 
   const counts = {};
   const labels_map = {
-    'Deployed':                 'Deployed',
-    'In progress':              'In Progress',
-    'Potential but lack CBA':   'Potential/Lack CBA',
-    'Awaiting client approvals':'Awaiting Approval',
-    'Not Applicable':           'Not Applicable',
-    '':                         'Not Selected'
+    'Deployed': 'Deployed',
+    'In progress': 'In Progress',
+    'Potential but lack CBA': 'Potential/Lack CBA',
+    'Awaiting client approvals': 'Awaiting Approval',
+    'Not Applicable': 'Not Applicable',
+    '': 'Not Selected'
   };
   state.rows.forEach(r => {
     const k = r.decision || '';
@@ -1176,14 +1183,14 @@ function renderApprovalChart() {
   });
 
   const entries = Object.entries(counts).filter(([, v]) => v > 0);
-  const labels  = entries.map(([k]) => labels_map[k] || k);
-  const data    = entries.map(([, v]) => v);
-  const colors  = entries.map(([k]) => {
-    if (k === 'Deployed')                  return 'rgba(112,173,71,0.85)';
-    if (k === 'In progress')               return 'rgba(255,192,0,0.85)';
-    if (k === 'Potential but lack CBA')    return 'rgba(198,239,206,0.9)';
+  const labels = entries.map(([k]) => labels_map[k] || k);
+  const data = entries.map(([, v]) => v);
+  const colors = entries.map(([k]) => {
+    if (k === 'Deployed') return 'rgba(112,173,71,0.85)';
+    if (k === 'In progress') return 'rgba(255,192,0,0.85)';
+    if (k === 'Potential but lack CBA') return 'rgba(198,239,206,0.9)';
     if (k === 'Awaiting client approvals') return 'rgba(166,166,166,0.85)';
-    if (k === 'Not Applicable')            return 'rgba(220,220,220,0.85)';
+    if (k === 'Not Applicable') return 'rgba(220,220,220,0.85)';
     return 'rgba(200,200,200,0.5)';
   });
 
@@ -1215,7 +1222,7 @@ function renderHeatmapChart() {
       clientMap[c].possible++;
       const cell = state.cellData[`${row.id}::${asset}`];
       if (!cell) return;
-      if (cell.status === 'Deployed')    clientMap[c].deployed++;
+      if (cell.status === 'Deployed') clientMap[c].deployed++;
       else if (cell.status === 'In progress') clientMap[c].inprog++;
     });
   });
@@ -1228,10 +1235,10 @@ function renderHeatmapChart() {
   chartInstances['heatmap'] = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: sorted.map(x => x.name.length > 14 ? x.name.slice(0,13)+'…' : x.name),
+      labels: sorted.map(x => x.name.length > 14 ? x.name.slice(0, 13) + '…' : x.name),
       datasets: [
-        { label: 'Deployed %',    data: sorted.map(x => x.dep / (x.dep + x.ip + 0.001) * x.pct), backgroundColor: 'rgba(112,173,71,0.85)' },
-        { label: 'In Progress %', data: sorted.map(x => x.ip  / (x.dep + x.ip + 0.001) * x.pct), backgroundColor: 'rgba(255,192,0,0.75)' }
+        { label: 'Deployed %', data: sorted.map(x => x.dep / (x.dep + x.ip + 0.001) * x.pct), backgroundColor: 'rgba(112,173,71,0.85)' },
+        { label: 'In Progress %', data: sorted.map(x => x.ip / (x.dep + x.ip + 0.001) * x.pct), backgroundColor: 'rgba(255,192,0,0.75)' }
       ]
     },
     options: {
@@ -1289,7 +1296,7 @@ function renderPotentialChart() {
   chartInstances['potential'] = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: sorted.map(([name]) => name.length > 14 ? name.slice(0,13)+'…' : name),
+      labels: sorted.map(([name]) => name.length > 14 ? name.slice(0, 13) + '…' : name),
       datasets: [{
         label: 'Potential FTE (Lack CBA)',
         data: sorted.map(([, v]) => v),
@@ -1322,7 +1329,7 @@ function renderInsightsList(towerStats, totalBase, totalPipe, approvedCount, com
   const autoInsights = [];
   const yield_ = totalBase > 0 ? (totalPipe / totalBase) * 100 : 0;
   if (yield_ >= 22.5) autoInsights.push({ title: 'Excellent Portfolio Yield', desc: `Overall yield <strong>${yield_.toFixed(1)}%</strong> exceeds 22.5% benchmark.`, type: 'success' });
-  else                autoInsights.push({ title: 'Target Yield Deficit',       desc: `Portfolio yield <strong>${yield_.toFixed(1)}%</strong> vs 22.5% benchmark. Identify more opportunities.`, type: 'warning' });
+  else autoInsights.push({ title: 'Target Yield Deficit', desc: `Portfolio yield <strong>${yield_.toFixed(1)}%</strong> vs 22.5% benchmark. Identify more opportunities.`, type: 'warning' });
 
   // Asset penetration insight
   if (pen.overallCoveragePct >= 30) autoInsights.push({ title: 'Strong Asset Penetration', desc: `Overall asset coverage at <strong>${pen.overallCoveragePct.toFixed(1)}%</strong> of baseline FTE. Portfolio is well covered.`, type: 'success' });
@@ -1333,7 +1340,7 @@ function renderInsightsList(towerStats, totalBase, totalPipe, approvedCount, com
     const s = towerStats[t];
     if (s.base > 0) {
       const diff = (s.pipe / s.base * 100) - s.benchmark;
-      if (diff >= 5)  autoInsights.push({ title: `Leader: ${t} Tower`, desc: `${t} exceeds benchmark by <strong>+${diff.toFixed(1)}%</strong>.`, type: 'success' });
+      if (diff >= 5) autoInsights.push({ title: `Leader: ${t} Tower`, desc: `${t} exceeds benchmark by <strong>+${diff.toFixed(1)}%</strong>.`, type: 'success' });
       else if (diff < -5) autoInsights.push({ title: `Gap: ${t} Tower`, desc: `${t} is <strong>${Math.abs(diff).toFixed(1)}%</strong> below target. Review opportunities.`, type: 'warning' });
     }
   });
@@ -1342,7 +1349,7 @@ function renderInsightsList(towerStats, totalBase, totalPipe, approvedCount, com
   if (completedCount > 0) {
     const rate = (approvedCount / completedCount * 100);
     if (rate < 70) autoInsights.push({ title: 'Approval Action Needed', desc: `Client approval rate at <strong>${rate.toFixed(0)}%</strong> is low. Prioritize client engagement.`, type: 'warning' });
-    else           autoInsights.push({ title: 'Strong Client Buy-in',   desc: `Client approval rate at <strong>${rate.toFixed(0)}%</strong>. Ensure delivery resourcing.`, type: 'success' });
+    else autoInsights.push({ title: 'Strong Client Buy-in', desc: `Client approval rate at <strong>${rate.toFixed(0)}%</strong>. Ensure delivery resourcing.`, type: 'success' });
   }
 
   // Potential FTE insight
@@ -1364,8 +1371,8 @@ function renderInsightsList(towerStats, totalBase, totalPipe, approvedCount, com
       </div>
       <div class="insight-body" id="auto-body-${i}">${ins.desc}</div>
       <div class="insight-edit-form" id="auto-edit-${i}" style="display:none;">
-        <input class="insight-text-input" id="auto-edit-title-${i}" value="${ins.title.replace(/"/g,'&quot;')}">
-        <textarea class="insight-textarea" id="auto-edit-desc-${i}">${ins.desc.replace(/<[^>]+>/g,'')}</textarea>
+        <input class="insight-text-input" id="auto-edit-title-${i}" value="${ins.title.replace(/"/g, '&quot;')}">
+        <textarea class="insight-textarea" id="auto-edit-desc-${i}">${ins.desc.replace(/<[^>]+>/g, '')}</textarea>
         <div class="insight-type-row">
           <button class="btn btn-sm btn-primary" onclick="saveAutoInsightEdit(${i}, '${ins.type}')">Save</button>
           <button class="btn btn-sm btn-secondary" onclick="cancelAutoInsightEdit(${i})">Cancel</button>
@@ -1394,9 +1401,9 @@ function renderInsightsList(towerStats, totalBase, totalPipe, approvedCount, com
         <textarea class="insight-textarea" id="custom-edit-desc-${ins.id}">${escHtml(ins.desc)}</textarea>
         <div class="insight-type-row">
           <select id="custom-edit-type-${ins.id}">
-            <option value="info" ${ins.type==='info'?'selected':''}>Info</option>
-            <option value="success" ${ins.type==='success'?'selected':''}>Positive</option>
-            <option value="warning" ${ins.type==='warning'?'selected':''}>Warning</option>
+            <option value="info" ${ins.type === 'info' ? 'selected' : ''}>Info</option>
+            <option value="success" ${ins.type === 'success' ? 'selected' : ''}>Positive</option>
+            <option value="warning" ${ins.type === 'warning' ? 'selected' : ''}>Warning</option>
           </select>
           <button class="btn btn-sm btn-primary" onclick="saveCustomInsightEdit('${ins.id}')">Save</button>
           <button class="btn btn-sm btn-secondary" onclick="cancelCustomInsightEdit('${ins.id}')">Cancel</button>
@@ -1418,7 +1425,7 @@ function cancelAutoInsightEdit(i) {
 }
 function saveAutoInsightEdit(i, origType) {
   const title = document.getElementById(`auto-edit-title-${i}`).value.trim();
-  const desc  = document.getElementById(`auto-edit-desc-${i}`).value.trim();
+  const desc = document.getElementById(`auto-edit-desc-${i}`).value.trim();
   if (!title) return;
   // Promote to custom insight
   const id = `custom_${Date.now()}_${i}`;
@@ -1442,8 +1449,8 @@ function cancelAddInsight() {
 
 function saveNewInsight() {
   const title = document.getElementById('newInsightTitle').value.trim();
-  const desc  = document.getElementById('newInsightDesc').value.trim();
-  const type  = document.getElementById('newInsightType').value;
+  const desc = document.getElementById('newInsightDesc').value.trim();
+  const type = document.getElementById('newInsightType').value;
   if (!title) { alert('Title is required.'); return; }
   if (!state.customInsights) state.customInsights = [];
   state.customInsights.push({ id: `custom_${Date.now()}`, title, desc, type });
@@ -1467,8 +1474,8 @@ function cancelCustomInsightEdit(id) {
 }
 function saveCustomInsightEdit(id) {
   const title = document.getElementById(`custom-edit-title-${id}`).value.trim();
-  const desc  = document.getElementById(`custom-edit-desc-${id}`).value.trim();
-  const type  = document.getElementById(`custom-edit-type-${id}`).value;
+  const desc = document.getElementById(`custom-edit-desc-${id}`).value.trim();
+  const type = document.getElementById(`custom-edit-type-${id}`).value;
   if (!title) return;
   const ins = (state.customInsights || []).find(x => x.id === id);
   if (ins) { ins.title = title; ins.desc = desc; ins.type = type; }
@@ -1480,10 +1487,10 @@ function saveCustomInsightEdit(id) {
 // ==========================================
 function openModal(id) {
   document.getElementById(id).classList.add('active');
-  if (id === 'modal-asset')  populateAssetModalList();
-  if (id === 'modal-owner')  populateOwnerModalList();
-  if (id === 'modal-tower')  populateTowerModalList();
-  if (id === 'modal-type')   populateTypeModalList();
+  if (id === 'modal-asset') populateAssetModalList();
+  if (id === 'modal-owner') populateOwnerModalList();
+  if (id === 'modal-tower') populateTowerModalList();
+  if (id === 'modal-type') populateTypeModalList();
   if (id === 'modal-region') populateRegionModalList();
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -1658,7 +1665,7 @@ function populateOwnerModalList() {
 }
 
 function handleAddOwner() {
-  const name  = document.getElementById('newOwnerName').value.trim();
+  const name = document.getElementById('newOwnerName').value.trim();
   const email = document.getElementById('newOwnerEmail').value.trim();
   if (!name || !email) { alert('Both name and email are required.'); return; }
   if (state.owners[name]) { alert('Owner already exists.'); return; }
@@ -1697,7 +1704,7 @@ function handleBulkUpload(event) {
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[masterSheet], { defval: '' });
         rows.forEach(r => {
           const client = String(r['Client Name'] || r['Client'] || '').trim();
-          const tower  = String(r['Tower'] || '').trim();
+          const tower = String(r['Tower'] || '').trim();
           const region = String(r['Region'] || '').trim();
           const init = String(r['Proposed Asset'] || r['Proposed Initiative'] || '').trim();
           if (!client || !tower) return;
@@ -1731,7 +1738,7 @@ function handleBulkUpload(event) {
             if (r['Estimated FTE Benefit'] !== '') target.estimatedFteBenefit = parseFloat(r['Estimated FTE Benefit']) || 0;
             if (r['Implementation Cost ($)'] !== '') target.implementationCost = parseFloat(r['Implementation Cost ($)']) || 0;
             if (r['$ Savings'] !== '') target.dollarSavings = parseFloat(r['$ Savings']) || 0;
-            if (r['Benchmark %'] !== '') target.benchmark = parseFloat(String(r['Benchmark %']).replace('%','')) || 20;
+            if (r['Benchmark %'] !== '') target.benchmark = parseFloat(String(r['Benchmark %']).replace('%', '')) || 20;
             if (r['Owner'] !== '') target.owner = String(r['Owner']).trim() || 'None';
           };
 
@@ -1742,7 +1749,7 @@ function handleBulkUpload(event) {
             if (!uniq.has(client) && uniq.size >= 500) return;
             if (state.rows.filter(x => x.client.toLowerCase() === client.toLowerCase()).length >= 8) return;
             const newRow = {
-              id: `row_${Date.now()}_${Math.floor(Math.random()*9999)}`,
+              id: `row_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
               client, tower, region: region || '', baseFte: 10, assessment: 'Not Started',
               pipelineFte: 0, decision: '', initiative: '', initiativeType: '',
               estimatedFteBenefit: 0, implementationCost: 0, dollarSavings: 0, benchmark: 20, owner: 'None'
@@ -1773,7 +1780,7 @@ function handleBulkUpload(event) {
             const rowArr = jsonData[i];
             const rClient = String(rowArr[0] || '').trim();
             const rRegion = String(rowArr[1] || '').trim();
-            const rTower  = String(rowArr[2] || '').trim();
+            const rTower = String(rowArr[2] || '').trim();
             if (!rClient || !rTower) continue;
             const matchRow = state.rows.find(r =>
               r.client.toLowerCase() === rClient.toLowerCase() &&
@@ -1783,7 +1790,7 @@ function handleBulkUpload(event) {
             if (!matchRow) continue;
             assetCols.forEach((col, idx) => {
               const clean = col.replace(/^Asset\s+/i, '').trim();
-              const val   = String(rowArr[4 + idx] || '').trim();
+              const val = String(rowArr[4 + idx] || '').trim();
               if (!val || !clean) return;
               const m = val.match(/^([\d.]+)\s*\((.+)\)$/);
               if (m) { state.cellData[`${matchRow.id}::${clean}`] = { fte: parseFloat(m[1]) || 0, status: m[2].trim() }; }
@@ -1816,8 +1823,8 @@ function downloadBulkTemplate() {
     const sampleStyle = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F2F2F2' } } };
 
     // Sheet 1: Master_Tracker
-    const masterCols = ['Client Name','Region','Tower','Baseline FTE','Assessment Status','Agentic Potential FTE',
-      'Client Approval for AI','Proposed Asset','Type','Estimated FTE Benefit','Implementation Cost ($)','$ Savings','Owner','Benchmark %'];
+    const masterCols = ['Client Name', 'Region', 'Tower', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
+      'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit', 'Implementation Cost ($)', '$ Savings', 'Owner', 'Benchmark %'];
     const masterHints = [
       'Unique client name (max 500)', 'Region name from master list (e.g. APAC, EMEA, Americas)', 'Tower name from master list (max 8 per client)',
       'Whole number ≥ 0', 'Not Started / In Progress / Completed / No Scale',
@@ -1826,10 +1833,10 @@ function downloadBulkTemplate() {
       'Fill if In Progress or Completed', 'USD number', 'USD number (negative allowed)', 'Owner name', 'Number 0-100'
     ];
     const masterSamples = [
-      ['Client Alpha','APAC','PTP',150,'Completed',30,'Deployed','Invoice Automation','Agentic',28,75000,120000,'Jane Smith',25],
-      ['Client Alpha','APAC','RTR',80,'In Progress',15,'In progress','GL Reconciliation Bot','RPA',12,40000,60000,'Jane Smith',20],
-      ['Client Beta','EMEA','OTC',200,'Not Started',0,'Select','','',0,0,0,'None',20],
-      ['Client Beta','Americas','FP&A',100,'No Scale',0,'Not Applicable','','',0,0,0,'None',0],
+      ['Client Alpha', 'APAC', 'PTP', 150, 'Completed', 30, 'Deployed', 'Invoice Automation', 'Agentic', 28, 75000, 120000, 'Jane Smith', 25],
+      ['Client Alpha', 'APAC', 'RTR', 80, 'In Progress', 15, 'In progress', 'GL Reconciliation Bot', 'RPA', 12, 40000, 60000, 'Jane Smith', 20],
+      ['Client Beta', 'EMEA', 'OTC', 200, 'Not Started', 0, 'Select', '', '', 0, 0, 0, 'None', 20],
+      ['Client Beta', 'Americas', 'FP&A', 100, 'No Scale', 0, 'Not Applicable', '', '', 0, 0, 0, 'None', 0],
     ];
     const wsMaster = XLSX.utils.aoa_to_sheet([masterCols, masterHints, ...masterSamples]);
     wsMaster['!cols'] = masterCols.map(() => ({ wch: 22 }));
@@ -1849,8 +1856,8 @@ function downloadBulkTemplate() {
     const assetHints = ['Same as Master_Tracker', 'Same as Master_Tracker', 'Same as Master_Tracker', 'Baseline FTE',
       ...assetNames.map(() => 'FTE count (status defaults to Deployed)'), 'Auto-calculated (leave blank)'];
     const assetSamples = [
-      ['Client Alpha','APAC','PTP',150,...assetNames.map((a,i) => i===0 ? 28 : ''),''],
-      ['Client Alpha','APAC','RTR',80,...assetNames.map((a,i) => i===1 ? 12 : ''),''],
+      ['Client Alpha', 'APAC', 'PTP', 150, ...assetNames.map((a, i) => i === 0 ? 28 : ''), ''],
+      ['Client Alpha', 'APAC', 'RTR', 80, ...assetNames.map((a, i) => i === 1 ? 12 : ''), ''],
     ];
     const wsAsset = XLSX.utils.aoa_to_sheet([assetHdrs, assetHints, ...assetSamples]);
     wsAsset['!cols'] = assetHdrs.map(() => ({ wch: 22 }));
@@ -1863,12 +1870,12 @@ function downloadBulkTemplate() {
 
     // Sheet 3: Instructions
     const instr = [
-      ['AI Penetration Tracker – Bulk Upload Template'],[''],
+      ['AI Penetration Tracker – Bulk Upload Template'], [''],
       ['STEPS'],
       ['1', 'Fill Master_Tracker sheet (delete hint row before upload, or leave – rows with no Client Name are skipped)'],
       ['2', 'Optionally fill Asset_Mapping to pre-load the asset grid'],
       ['3', 'Click "📄 Bulk Upload XLS" on the dashboard'],
-      ['4', 'Click "Save to File" to persist changes'],[''],
+      ['4', 'Click "Save to File" to persist changes'], [''],
       ['FIELD RULES'],
       ['Tower', 'Must be a valid tower. New towers in file will be auto-added.'],
       ['Baseline FTE', 'Whole number ≥ 0. Must be ≥ Agentic Potential FTE.'],
@@ -1898,33 +1905,33 @@ function downloadXls() {
   try {
     const wb = XLSX.utils.book_new();
     const masterData = [[
-      'Client Name','Region','Tower','Baseline FTE','Assessment Status','Agentic Potential FTE',
-      'Client Approval for AI','Proposed Asset','Type','Estimated FTE Benefit',
-      'Implementation Cost ($)','$ Savings','Remaining Potential','Owner',
-      'Actual Release %','Benchmark %','Variance %'
+      'Client Name', 'Region', 'Tower', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
+      'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit',
+      'Implementation Cost ($)', '$ Savings', 'Remaining Potential', 'Owner',
+      'Actual Release %', 'Benchmark %', 'Variance %'
     ]];
     state.rows.forEach(row => {
-      const rem = (row.pipelineFte||0) - (row.estimatedFteBenefit||0);
-      const act = row.baseFte > 0 ? (row.pipelineFte/row.baseFte)*100 : 0;
+      const rem = (row.pipelineFte || 0) - (row.estimatedFteBenefit || 0);
+      const act = row.baseFte > 0 ? (row.pipelineFte / row.baseFte) * 100 : 0;
       masterData.push([
         row.client, row.region || '', row.tower, row.baseFte, row.assessment, row.pipelineFte,
-        row.decision, row.initiative||'', row.initiativeType||'', row.estimatedFteBenefit||0,
-        row.implementationCost||0, row.dollarSavings||0, rem, row.owner||'None',
+        row.decision, row.initiative || '', row.initiativeType || '', row.estimatedFteBenefit || 0,
+        row.implementationCost || 0, row.dollarSavings || 0, rem, row.owner || 'None',
         `${act.toFixed(1)}%`, `${row.benchmark}%`, `${(act - row.benchmark).toFixed(1)}%`
       ]);
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(masterData), 'Master_Tracker');
 
-    const assetHdr = ['Client Name','Region','Tower','Base FTE',...state.assets,'Future State FTE'];
+    const assetHdr = ['Client Name', 'Region', 'Tower', 'Base FTE', ...state.assets, 'Future State FTE'];
     const assetData = [assetHdr];
     state.rows.forEach(row => {
       const arr = [row.client, row.region || '', row.tower, row.baseFte];
-      let d=0,p=0,ip=0;
+      let d = 0, p = 0, ip = 0;
       state.assets.forEach(a => {
-        const cell = state.cellData[`${row.id}::${a}`] || { fte:'', status:'Not Applicable' };
-        const v = parseFloat(cell.fte||0);
-        if (cell.status==='Deployed') d+=v; else if (cell.status==='Potential but lack CBA') p+=v; else if (cell.status==='In progress') ip+=v;
-        arr.push(cell.fte!=='' && cell.status!=='Not Applicable' ? `${cell.fte} (${cell.status})` : '');
+        const cell = state.cellData[`${row.id}::${a}`] || { fte: '', status: 'Not Applicable' };
+        const v = parseFloat(cell.fte || 0);
+        if (cell.status === 'Deployed') d += v; else if (cell.status === 'Potential but lack CBA') p += v; else if (cell.status === 'In progress') ip += v;
+        arr.push(cell.fte !== '' && cell.status !== 'Not Applicable' ? `${cell.fte} (${cell.status})` : '');
       });
       arr.push(row.baseFte - d - p - ip);
       assetData.push(arr);
@@ -1948,25 +1955,25 @@ function downloadPpt() {
     const pptx = new PptxGenJS();
     const slide1 = pptx.addSlide();
     slide1.background = { fill: '1F497D' };
-    slide1.addText('AI Penetration & Opportunity Portfolio Dashboard', { x:1, y:2, w:8, h:1.5, fontSize:32, bold:true, color:'FFFFFF', fontFace:'Outfit' });
-    slide1.addText('Executive Savings & Financial Summary', { x:1, y:3.5, w:8, h:0.5, fontSize:18, color:'DCE6F1', fontFace:'Outfit' });
-    let totalBase=0, totalPipe=0, completedCount=0, totalCost=0, totalSavings=0;
+    slide1.addText('AI Penetration & Opportunity Portfolio Dashboard', { x: 1, y: 2, w: 8, h: 1.5, fontSize: 32, bold: true, color: 'FFFFFF', fontFace: 'Outfit' });
+    slide1.addText('Executive Savings & Financial Summary', { x: 1, y: 3.5, w: 8, h: 0.5, fontSize: 18, color: 'DCE6F1', fontFace: 'Outfit' });
+    let totalBase = 0, totalPipe = 0, completedCount = 0, totalCost = 0, totalSavings = 0;
     state.rows.forEach(r => {
-      totalBase += parseFloat(r.baseFte||0); totalPipe += parseFloat(r.pipelineFte||0);
-      totalCost += parseFloat(r.implementationCost||0); totalSavings += parseFloat(r.dollarSavings||0);
+      totalBase += parseFloat(r.baseFte || 0); totalPipe += parseFloat(r.pipelineFte || 0);
+      totalCost += parseFloat(r.implementationCost || 0); totalSavings += parseFloat(r.dollarSavings || 0);
       if (r.assessment === 'Completed') completedCount++;
     });
     const slide2 = pptx.addSlide();
-    slide2.addText('Executive Portfolio Summary', { x:.5, y:.4, w:9, h:.5, fontSize:22, bold:true, color:'1F497D', fontFace:'Outfit' });
+    slide2.addText('Executive Portfolio Summary', { x: .5, y: .4, w: 9, h: .5, fontSize: 22, bold: true, color: '1F497D', fontFace: 'Outfit' });
     slide2.addTable([[
-      { text: `Baseline Headcount\n${totalBase} FTE`, opts: { fontFace:'Outfit', fontSize:13, color:'1F497D', fill:'F2F2F2', align:'center' } },
-      { text: `Agentic Potential FTE\n${totalPipe} FTE`, opts: { fontFace:'Outfit', fontSize:13, color:'1F497D', fill:'F2F2F2', align:'center' } },
-      { text: `Implementation Cost\n$${totalCost.toLocaleString()}`, opts: { fontFace:'Outfit', fontSize:13, color:'1F497D', fill:'F2F2F2', align:'center' } },
-      { text: `Annual Savings\n$${totalSavings.toLocaleString()}`, opts: { fontFace:'Outfit', fontSize:13, color:'1F497D', fill:'F2F2F2', align:'center' } }
-    ]], { x:.5, y:1.2, w:9, h:1 });
+      { text: `Baseline Headcount\n${totalBase} FTE`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
+      { text: `Agentic Potential FTE\n${totalPipe} FTE`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
+      { text: `Implementation Cost\n$${totalCost.toLocaleString()}`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
+      { text: `Annual Savings\n$${totalSavings.toLocaleString()}`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } }
+    ]], { x: .5, y: 1.2, w: 9, h: 1 });
     slide2.addText(
-      `Key Observations:\n- ${totalBase} baseline FTEs tracked.\n- ${totalPipe} FTE agentic potential identified.\n- $${totalSavings.toLocaleString()} savings targeted on $${totalCost.toLocaleString()} investment.\n- ${state.rows.length > 0 ? ((completedCount/state.rows.length)*100).toFixed(0) : 0}% assessments completed.`,
-      { x:.5, y:2.5, w:9, h:2.5, fontSize:12, fontFace:'Outfit', color:'333333', lineSpacing:22 }
+      `Key Observations:\n- ${totalBase} baseline FTEs tracked.\n- ${totalPipe} FTE agentic potential identified.\n- $${totalSavings.toLocaleString()} savings targeted on $${totalCost.toLocaleString()} investment.\n- ${state.rows.length > 0 ? ((completedCount / state.rows.length) * 100).toFixed(0) : 0}% assessments completed.`,
+      { x: .5, y: 2.5, w: 9, h: 2.5, fontSize: 12, fontFace: 'Outfit', color: '333333', lineSpacing: 22 }
     );
     const dt = getFormattedDateTime();
     pptx.writeFile({ fileName: `AI_Penetration_Portfolio_${dt.dateTime}.pptx` });
