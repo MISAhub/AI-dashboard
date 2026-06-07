@@ -9,6 +9,7 @@
 // STATE
 // ==========================================
 let state = {
+  clients: [],
   assets: [],
   owners: {},
   rows: [],
@@ -21,12 +22,14 @@ let state = {
 
 let activeTab = 'tab-input';
 let currentEditingCell = null;
+let editingOwnerRowId = null;
+let editingClientOwner = null;
 let selectedPopoverStatus = 'Not Applicable';
 let previousInputValues = {};
 let lastServerSyncStr = "";
 
 // Active filter state (shared across both tabs)
-let filterState = { region: '', tower: '', assessment: '', initiative: '' };
+let filterState = { client: '', region: '', tower: '', assessment: '', initiative: '', type: '', status: '' };
 
 // Sort state
 let sortState = { col: null, dir: null };
@@ -37,19 +40,24 @@ const SORTABLE_COLS = [
   { key: 'region', label: 'Region' },
   { key: 'tower', label: 'Tower' },
   { key: 'baseFte', label: 'Baseline FTE' },
+  { key: 'addressableFte', label: 'Addressable FTE' },
   { key: 'assessment', label: 'Assessment Status' },
   { key: 'pipelineFte', label: 'Agentic Potential FTE' },
   { key: 'decision', label: 'Client Approval for AI' },
   { key: 'initiative', label: 'Proposed Asset' },
   { key: 'initiativeType', label: 'Type' },
+  { key: 'stack', label: 'Stack' },
   { key: 'estimatedFteBenefit', label: 'Est. FTE Benefit' },
+  { key: 'realizedFte', label: 'Realized FTE' },
   { key: 'implementationCost', label: 'Impl. Cost ($)' },
   { key: 'dollarSavings', label: '$ Savings' },
   { key: '_remaining', label: 'Remaining Pot.' },
   { key: 'owner', label: 'Owner' },
-  { key: '_actualPct', label: 'Release %' },
+  { key: '_aiPotentialPct', label: 'AI Potential %' },
+  { key: '_actualPct', label: 'Benefit %' },
   { key: 'benchmark', label: 'Benchmark %' },
   { key: '_variance', label: 'Variance %' },
+  { key: 'actionPlan', label: 'Action Plan' }
 ];
 
 // ==========================================
@@ -59,13 +67,14 @@ document.addEventListener('DOMContentLoaded', () => {
   setupNavigation();
   loadData();
 
-  document.getElementById('saveBtn').addEventListener('click', saveData);
+  document.getElementById('saveBtn').addEventListener('click', () => saveData(true));
   document.getElementById('downloadXlsBtn').addEventListener('click', downloadXls);
   document.getElementById('downloadPptBtn').addEventListener('click', downloadPpt);
   document.getElementById('bulkUploadBtn').addEventListener('click', () => {
     document.getElementById('bulkUploadInput').click();
   });
   document.getElementById('bulkUploadInput').addEventListener('change', handleBulkUpload);
+  document.getElementById('backupSelect').addEventListener('change', (e) => handleRestoreBackup(e.target.value));
 
   // Close popover on outside click
   document.addEventListener('click', (e) => {
@@ -85,8 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') handleSavePopover();
   });
 
-  // Start automatic polling every 5 seconds
-  setInterval(pollServer, 5000);
+  loadBackupsList();
 });
 
 function setupNavigation() {
@@ -101,6 +109,8 @@ function setupNavigation() {
       closePopover();
       if (activeTab === 'tab-insights') renderInsights();
       else if (activeTab === 'tab-assets') renderAssetGrid();
+      else if (activeTab === 'tab-client-summary') renderClientSummary();
+      else if (activeTab === 'tab-leaderboard') renderLeaderboard();
       else renderInputTable();
     });
   });
@@ -109,11 +119,112 @@ function setupNavigation() {
 // ==========================================
 // DATA LOAD / SAVE
 // ==========================================
+function getApiUrl(path) {
+  if (window.location.protocol === 'file:') {
+    return 'http://localhost:3000' + path;
+  }
+  return path;
+}
+
+async function loadBackupsList() {
+  try {
+    const res = await fetch(getApiUrl('/api/backups'));
+    if (!res.ok) return;
+    const list = await res.json();
+    const sel = document.getElementById('backupSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Load Saved State --</option>';
+    list.forEach(b => {
+      const o = document.createElement('option');
+      o.value = b.name;
+      o.textContent = b.label;
+      sel.appendChild(o);
+    });
+  } catch (err) {
+    console.error('Failed to load backups list:', err);
+  }
+}
+
+async function handleRestoreBackup(fileName) {
+  if (!fileName) return;
+  if (!confirm(`Restore state to ${fileName}? This will overwrite the current configuration.`)) {
+    document.getElementById('backupSelect').value = '';
+    return;
+  }
+  try {
+    const res = await fetch(getApiUrl('/api/restore'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName })
+    });
+    if (res.ok) {
+      const result = await res.json();
+      state = result.data;
+      
+      // Ensure defaults for loaded state
+      if (!state.clients) state.clients = [];
+      if (!state.assets) state.assets = [];
+      if (!state.owners) state.owners = {};
+      if (!state.rows) state.rows = [];
+      if (!state.cellData) state.cellData = {};
+      if (!state.towers || state.towers.length === 0) state.towers = ['PTP', 'RTR', 'OTC', 'FP&A'];
+      if (!state.regions || state.regions.length === 0) state.regions = ['APAC', 'EMEA', 'Americas'];
+      if (!state.initiativeTypes) state.initiativeTypes = [];
+      if (!state.customInsights) state.customInsights = [];
+
+      localStorage.setItem('ai_penetration_state', JSON.stringify(state));
+      lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
+      
+      showStatus('Restored successfully', 'success');
+      renderInputTable();
+      if (activeTab === 'tab-assets') renderAssetGrid();
+      else if (activeTab === 'tab-insights') renderInsights();
+      else if (activeTab === 'tab-client-summary') renderClientSummary();
+      
+      document.getElementById('backupSelect').value = '';
+    } else {
+      const errData = await res.json();
+      alert('Failed to restore backup: ' + (errData.error || 'Server error'));
+    }
+  } catch (err) {
+    console.error('Restore backup error:', err);
+    alert('Failed to restore backup: ' + err.message);
+  }
+}
+
+async function handleResetState() {
+  if (!confirm("Are you sure you want to clear all contents from the table? This will make the dashboard completely blank.")) {
+    return;
+  }
+  
+  // Reset active configurations to blank
+  state.rows = [];
+  state.cellData = {};
+  state.clients = [];
+  state.assets = [];
+  state.initiativeTypes = [];
+  state.customInsights = [];
+  
+  localStorage.setItem('ai_penetration_state', JSON.stringify(state));
+  
+  showStatus('Connected (Unsaved Draft)', 'warning');
+  
+  // Re-render components
+  renderInputTable();
+  if (activeTab === 'tab-assets') renderAssetGrid();
+  else if (activeTab === 'tab-insights') renderInsights();
+  else if (activeTab === 'tab-client-summary') renderClientSummary();
+  
+  const sel = document.getElementById('backupSelect');
+  if (sel) sel.value = '';
+}
+
 async function loadData() {
   try {
-    const res = await fetch('/api/data?_cb=' + Date.now());
+    const res = await fetch(getApiUrl('/api/data?_cb=' + Date.now()));
     const loaded = await res.json();
     state = loaded;
+    if (!state.clients) state.clients = [];
     if (!state.assets) state.assets = [];
     if (!state.owners) state.owners = {};
     if (!state.rows) state.rows = [];
@@ -124,20 +235,34 @@ async function loadData() {
     if (!state.customInsights) state.customInsights = [];
 
     state.rows.forEach(row => {
-      if (row.pipelineFte === undefined) row.pipelineFte = 0;
-      if (row.estimatedFteBenefit === undefined) row.estimatedFteBenefit = 0;
-      if (row.implementationCost === undefined) row.implementationCost = 0;
-      if (row.dollarSavings === undefined) row.dollarSavings = 0;
+      if (row.baseFte === undefined) row.baseFte = '';
+      if (row.addressableFte === undefined) row.addressableFte = '';
+      if (row.pipelineFte === undefined) row.pipelineFte = '';
+      if (row.estimatedFteBenefit === undefined) row.estimatedFteBenefit = '';
+      if (row.realizedFte === undefined) row.realizedFte = '';
+      if (row.implementationCost === undefined) row.implementationCost = '';
+      if (row.dollarSavings === undefined) row.dollarSavings = '';
       if (!row.owner) row.owner = 'None';
       if (!row.region) row.region = '';
       if (row.decision === 'Pending Review') row.decision = '';
       if (!row.initiativeType) row.initiativeType = '';
+      if (!row.stack) row.stack = '';
+      if (row.actionPlan === undefined) row.actionPlan = '';
+      if (row.clientActionPlan === undefined) row.clientActionPlan = '';
+      
+      // Auto-add client name to master if missing
+      if (row.client && !state.clients.includes(row.client)) {
+        state.clients.push(row.client);
+      }
     });
+
+    state.clients.sort((a, b) => a.localeCompare(b));
 
     lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
 
     showStatus('Connected & Synced', 'success');
     renderInputTable();
+    loadBackupsList();
   } catch (err) {
     console.error('Load error:', err);
     showStatus('Offline Mode (Local Storage)', 'warning');
@@ -146,23 +271,30 @@ async function loadData() {
   }
 }
 
-async function saveData() {
-  showStatus('Saving...', 'saving');
-  try {
-    const res = await fetch('/api/data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state)
-    });
-    if (res.ok) {
-      showStatus('Saved & Synced', 'success');
+async function saveData(manual = false) {
+  if (manual) {
+    showStatus('Saving...', 'saving');
+    try {
+      const res = await fetch(getApiUrl('/api/data'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      });
+      if (res.ok) {
+        showStatus('Saved & Synced', 'success');
+        localStorage.setItem('ai_penetration_state', JSON.stringify(state));
+        lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
+        downloadJsonState();
+        loadBackupsList();
+      } else throw new Error();
+    } catch (err) {
+      console.error('Failed to save state to server:', err);
+      showStatus('Failed to save', 'error');
       localStorage.setItem('ai_penetration_state', JSON.stringify(state));
-      lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
-      downloadJsonState();
-    } else throw new Error();
-  } catch {
-    showStatus('Failed to save', 'error');
+    }
+  } else {
     localStorage.setItem('ai_penetration_state', JSON.stringify(state));
+    showStatus('Connected (Unsaved Draft)', 'warning');
   }
 }
 
@@ -174,7 +306,7 @@ async function pollServer() {
   if (isEditing) return;
 
   try {
-    const res = await fetch('/api/data?_cb=' + Date.now());
+    const res = await fetch(getApiUrl('/api/data?_cb=' + Date.now()));
     if (!res.ok) return;
     const loaded = await res.json();
     const loadedStr = JSON.stringify({ rows: loaded.rows, cellData: loaded.cellData, assets: loaded.assets, owners: loaded.owners, towers: loaded.towers, regions: loaded.regions, initiativeTypes: loaded.initiativeTypes, customInsights: loaded.customInsights });
@@ -184,6 +316,7 @@ async function pollServer() {
       lastServerSyncStr = loadedStr;
       if (activeTab === 'tab-insights') renderInsights();
       else if (activeTab === 'tab-assets') renderAssetGrid();
+      else if (activeTab === 'tab-client-summary') renderClientSummary();
       else renderInputTable();
       showStatus('Connected & Synced', 'success');
     }
@@ -222,16 +355,31 @@ function getTowerBenchmark(tower) {
 function getDecisionColorClass(d) {
   if (d === 'Deployed') return 'status-deployed';
   if (d === 'Potential but lack CBA') return 'status-potential';
-  if (d === 'In progress') return 'status-inprogress';
+  if (d === 'In progress' || d === 'In Progress') return 'status-inprogress';
   if (d === 'Awaiting client approvals') return 'status-awaiting';
-  if (d === 'Not Applicable') return 'status-na';
+  if (d === 'Not Applicable' || d === 'Dropped') return 'status-na';
+  return 'status-ideation';
+}
+
+function getAssessmentColorClass(val) {
+  if (val === 'Completed') return 'assessment-completed';
+  if (val === 'In Progress') return 'assessment-inprogress';
+  return '';
+}
+
+function getPctColorClass(pctValue) {
+  const p = pctValue * 100;
+  if (p >= 50) return 'status-deployed';
+  if (p >= 40) return 'status-inprogress';
+  if (p >= 20) return 'status-awaiting';
+  if (p >= 10) return 'status-potential';
   return '';
 }
 
 function getCellStatusClass(s) {
   if (s === 'Deployed') return 'deployed';
   if (s === 'Potential but lack CBA') return 'potential';
-  if (s === 'In progress') return 'inprogress';
+  if (s === 'In progress' || s === 'In Progress') return 'inprogress';
   if (s === 'Awaiting client approvals') return 'awaiting';
   return 'na';
 }
@@ -257,19 +405,7 @@ function getTowerCountForClient(clientName, excludeRowId, proposedClient) {
 function savePrev(key, val) { previousInputValues[key] = val; }
 
 function isDuplicateRow(rowId, client, tower, region, initiative) {
-  const c = (client || '').trim().toLowerCase();
-  const t = (tower || '').trim().toLowerCase();
-  const r = (region || '').trim().toLowerCase();
-  const i = (initiative || '').trim().toLowerCase();
-
-  return state.rows.some(row => {
-    if (row.id === rowId) return false;
-    const rowC = (row.client || '').trim().toLowerCase();
-    const rowT = (row.tower || '').trim().toLowerCase();
-    const rowR = (row.region || '').trim().toLowerCase();
-    const rowI = (row.initiative || '').trim().toLowerCase();
-    return rowC === c && rowT === t && rowR === r && rowI === i;
-  });
+  return false;
 }
 
 function getFormattedDateTime() {
@@ -302,99 +438,151 @@ function downloadJsonState() {
 function handleRegionChange(rowId, value) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
-  if (isDuplicateRow(rowId, row.client, row.tower, value, row.initiative)) {
-    alert(`Duplicate Row Warning: A row with the same Client ("${row.client}"), Tower ("${row.tower}"), Region ("${value || 'None'}"), and Proposed Initiative ("${row.initiative || 'None'}") already exists.`);
-    renderInputTable();
-    return;
-  }
   row.region = value;
   updateFilterDropdowns();
   renderInputTable();
+  saveData();
 }
 
 // ==========================================
 // FILTER STATE & FUNCTIONS
 // ==========================================
 function updateFilterDropdowns() {
-  // Populate both sets of filter dropdowns (input + asset grid)
   ['', '-grid'].forEach(sfx => {
+    const cSel = document.getElementById(`filter-client${sfx}`);
     const rSel = document.getElementById(`filter-region${sfx}`);
     const tSel = document.getElementById(`filter-tower${sfx}`);
     const iSel = document.getElementById(`filter-initiative${sfx}`);
-    if (!rSel || !tSel || !iSel) return;
+    const typeSel = document.getElementById(`filter-type${sfx}`);
+    const statusSel = document.getElementById(`filter-status${sfx}`);
 
-    // Regions
-    const curR = rSel.value;
-    rSel.innerHTML = '<option value="">All Regions</option>';
-    state.regions.forEach(r => {
-      const o = document.createElement('option');
-      o.value = r; o.textContent = r;
-      if (r === curR) o.selected = true;
-      rSel.appendChild(o);
-    });
+    if (cSel) {
+      const curC = cSel.value;
+      cSel.innerHTML = '<option value="">All Clients</option>';
+      const sortedClients = [...state.clients].sort((a, b) => a.localeCompare(b));
+      sortedClients.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        if (c === curC) o.selected = true;
+        cSel.appendChild(o);
+      });
+    }
 
-    // Towers from master list
-    const curT = tSel.value;
-    tSel.innerHTML = '<option value="">All Towers</option>';
-    state.towers.forEach(t => {
-      const o = document.createElement('option');
-      o.value = t; o.textContent = t;
-      if (t === curT) o.selected = true;
-      tSel.appendChild(o);
-    });
+    if (rSel) {
+      const curR = rSel.value;
+      rSel.innerHTML = '<option value="">All Regions</option>';
+      state.regions.forEach(r => {
+        const o = document.createElement('option');
+        o.value = r; o.textContent = r;
+        if (r === curR) o.selected = true;
+        rSel.appendChild(o);
+      });
+    }
 
-    // Assets from master list
-    const curI = iSel.value;
-    iSel.innerHTML = '<option value="">Asset</option>';
-    state.assets.forEach(i => {
-      const o = document.createElement('option');
-      o.value = i; o.textContent = i;
-      if (i === curI) o.selected = true;
-      iSel.appendChild(o);
-    });
+    if (tSel) {
+      const curT = tSel.value;
+      tSel.innerHTML = '<option value="">All Towers</option>';
+      state.towers.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t; o.textContent = t;
+        if (t === curT) o.selected = true;
+        tSel.appendChild(o);
+      });
+    }
+
+    if (iSel) {
+      const curI = iSel.value;
+      iSel.innerHTML = '<option value="">Asset</option>';
+      state.assets.forEach(i => {
+        const o = document.createElement('option');
+        o.value = i; o.textContent = i;
+        if (i === curI) o.selected = true;
+        iSel.appendChild(o);
+      });
+    }
+
+    if (typeSel) {
+      const curType = typeSel.value;
+      typeSel.innerHTML = '<option value="">All Types</option>';
+      state.initiativeTypes.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t; o.textContent = t;
+        if (t === curType) o.selected = true;
+        typeSel.appendChild(o);
+      });
+    }
+
+    if (statusSel) {
+      const curStatus = statusSel.value;
+      statusSel.innerHTML = '<option value="">All Statuses</option>';
+      const statuses = ['Ideation', 'Deployed', 'Potential but lack CBA', 'In progress', 'Awaiting client approvals', 'Dropped'];
+      statuses.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s; o.textContent = s;
+        if (s === curStatus) o.selected = true;
+        statusSel.appendChild(o);
+      });
+    }
   });
 }
 
 function getActiveFilters() {
-  // Read from whichever filter bar is active
   const sfx = activeTab === 'tab-assets' ? '-grid' : '';
   return {
+    client: (document.getElementById(`filter-client${sfx}`) || {}).value || '',
     region: (document.getElementById(`filter-region${sfx}`) || {}).value || '',
     tower: (document.getElementById(`filter-tower${sfx}`) || {}).value || '',
     assessment: (document.getElementById(`filter-assessment${sfx}`) || {}).value || '',
     initiative: (document.getElementById(`filter-initiative${sfx}`) || {}).value || '',
+    type: (document.getElementById(`filter-type${sfx}`) || {}).value || '',
+    status: (document.getElementById(`filter-status${sfx}`) || {}).value || '',
   };
 }
 
 function applyFilters() {
-  // Sync both filter bars when either changes
+  const f = getActiveFilters();
+  filterState = { ...f };
+
   ['', '-grid'].forEach(sfx => {
+    const cSel = document.getElementById(`filter-client${sfx}`);
     const rSel = document.getElementById(`filter-region${sfx}`);
     const tSel = document.getElementById(`filter-tower${sfx}`);
     const aSel = document.getElementById(`filter-assessment${sfx}`);
     const iSel = document.getElementById(`filter-initiative${sfx}`);
-    if (!rSel) return;
-    rSel.value = filterState.region;
-    tSel.value = filterState.tower;
-    aSel.value = filterState.assessment;
-    iSel.value = filterState.initiative;
-  });
+    const typeSel = document.getElementById(`filter-type${sfx}`);
+    const statusSel = document.getElementById(`filter-status${sfx}`);
 
-  // Read the active tab's filters
-  const f = getActiveFilters();
-  filterState = { ...f };
+    if (cSel) cSel.value = filterState.client;
+    if (rSel) rSel.value = filterState.region;
+    if (tSel) tSel.value = filterState.tower;
+    if (aSel) aSel.value = filterState.assessment;
+    if (iSel) iSel.value = filterState.initiative;
+    if (typeSel) typeSel.value = filterState.type;
+    if (statusSel) statusSel.value = filterState.status;
+  });
 
   if (activeTab === 'tab-input') renderInputTable();
   else if (activeTab === 'tab-assets') renderAssetGrid();
 }
 
 function clearFilters() {
-  filterState = { region: '', tower: '', assessment: '', initiative: '' };
+  filterState = { client: '', region: '', tower: '', assessment: '', initiative: '', type: '', status: '' };
   ['', '-grid'].forEach(sfx => {
-    ['filter-region', 'filter-tower', 'filter-assessment', 'filter-initiative'].forEach(id => {
-      const el = document.getElementById(`${id}${sfx}`);
-      if (el) el.value = '';
-    });
+    const cSel = document.getElementById(`filter-client${sfx}`);
+    const rSel = document.getElementById(`filter-region${sfx}`);
+    const tSel = document.getElementById(`filter-tower${sfx}`);
+    const aSel = document.getElementById(`filter-assessment${sfx}`);
+    const iSel = document.getElementById(`filter-initiative${sfx}`);
+    const typeSel = document.getElementById(`filter-type${sfx}`);
+    const statusSel = document.getElementById(`filter-status${sfx}`);
+
+    if (cSel) cSel.value = '';
+    if (rSel) rSel.value = '';
+    if (tSel) tSel.value = '';
+    if (aSel) aSel.value = '';
+    if (iSel) iSel.value = '';
+    if (typeSel) typeSel.value = '';
+    if (statusSel) statusSel.value = '';
   });
   if (activeTab === 'tab-input') renderInputTable();
   else renderAssetGrid();
@@ -403,12 +591,132 @@ function clearFilters() {
 function getFilteredRows() {
   const f = filterState;
   return state.rows.filter(row => {
+    if (f.client && row.client !== f.client) return false;
     if (f.region && row.region !== f.region) return false;
     if (f.tower && row.tower !== f.tower) return false;
     if (f.assessment && row.assessment !== f.assessment) return false;
     if (f.initiative && row.initiative !== f.initiative) return false;
+    if (f.type && row.initiativeType !== f.type) return false;
+    if (f.status) {
+      const dec = row.decision || 'Ideation';
+      if (dec !== f.status) return false;
+    }
     return true;
   });
+}
+
+
+// Map to store custom column widths
+let customColWidths = {};
+try {
+  const stored = localStorage.getItem('custom_col_widths');
+  if (stored) customColWidths = JSON.parse(stored);
+} catch (e) {}
+
+function makeColumnResizable(th, widthKey) {
+  if (!th.querySelector('.resize-handle')) {
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    th.appendChild(handle);
+    
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const startX = e.pageX;
+      const startWidth = th.offsetWidth;
+      th.classList.add('resizing');
+      
+      const onMouseMove = (moveEvent) => {
+        const newWidth = Math.max(25, startWidth + (moveEvent.pageX - startX));
+        th.style.width = `${newWidth}px`;
+        th.style.minWidth = `${newWidth}px`;
+        th.style.maxWidth = `${newWidth}px`;
+        
+        customColWidths[widthKey] = newWidth;
+        localStorage.setItem('custom_col_widths', JSON.stringify(customColWidths));
+      };
+      
+      const onMouseUp = () => {
+        th.classList.remove('resizing');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+      
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+  
+  if (customColWidths[widthKey]) {
+    const w = customColWidths[widthKey];
+    th.style.width = `${w}px`;
+    th.style.minWidth = `${w}px`;
+    th.style.maxWidth = `${w}px`;
+  }
+}
+
+function getRowAddressableFte(row) {
+  if (row.addressableFte !== undefined && row.addressableFte !== '') {
+    return parseFloat(row.addressableFte) || 0;
+  }
+  return 0;
+}
+
+function getClientTowerAddressable(client, tower) {
+  const clientRows = state.rows.filter(r => 
+    r.client && r.tower && 
+    r.client.trim().toLowerCase() === client.trim().toLowerCase() && 
+    r.tower.trim().toLowerCase() === tower.trim().toLowerCase()
+  );
+  return clientRows.reduce((sum, r) => sum + getRowAddressableFte(r), 0);
+}
+
+function getMaxBaseFteForClientTower(client, tower, proposedRowId, proposedBase) {
+  let maxBase = 0;
+  state.rows.forEach(r => {
+    if (r.client && r.tower && r.client.trim().toLowerCase() === client.trim().toLowerCase() && r.tower.trim().toLowerCase() === tower.trim().toLowerCase()) {
+      let b = r.id === proposedRowId && proposedBase !== undefined ? proposedBase : r.baseFte;
+      const val = parseFloat(b) || 0;
+      if (val > maxBase) maxBase = val;
+    }
+  });
+  return maxBase;
+}
+
+function validateClientTowerFteConstraint(client, tower, proposedRowId, proposedAddressable, proposedBase) {
+  if (!client || !tower) return true;
+  
+  const clientRows = state.rows.filter(r => 
+    r.client && r.tower && 
+    r.client.trim().toLowerCase() === client.trim().toLowerCase() && 
+    r.tower.trim().toLowerCase() === tower.trim().toLowerCase()
+  );
+  
+  const anySpecified = clientRows.some(r => {
+    let addr = r.id === proposedRowId ? proposedAddressable : r.addressableFte;
+    return addr !== undefined && addr !== '';
+  });
+  
+  if (!anySpecified) {
+    return true; // Bypass validation if all blanks
+  }
+  
+  let sumAddressable = 0;
+  let maxBase = 0;
+  
+  clientRows.forEach(r => {
+    let addr = r.id === proposedRowId ? proposedAddressable : r.addressableFte;
+    if (addr !== undefined && addr !== '') {
+      sumAddressable += parseFloat(addr) || 0;
+    }
+    
+    let base = r.id === proposedRowId && proposedBase !== undefined ? proposedBase : r.baseFte;
+    const valBase = parseFloat(base) || 0;
+    if (valBase > maxBase) maxBase = valBase;
+  });
+  
+  return sumAddressable <= maxBase;
 }
 
 // ==========================================
@@ -438,11 +746,11 @@ function getSortedRows() {
       va = (a.pipelineFte || 0) - (a.estimatedFteBenefit || 0);
       vb = (b.pipelineFte || 0) - (b.estimatedFteBenefit || 0);
     } else if (sortState.col === '_actualPct') {
-      va = a.baseFte > 0 ? a.pipelineFte / a.baseFte : 0;
-      vb = b.baseFte > 0 ? b.pipelineFte / b.baseFte : 0;
+      va = (a.pipelineFte || 0) > 0 ? (a.estimatedFteBenefit || 0) / (a.pipelineFte || 0) : 0;
+      vb = (b.pipelineFte || 0) > 0 ? (b.estimatedFteBenefit || 0) / (b.pipelineFte || 0) : 0;
     } else if (sortState.col === '_variance') {
-      va = (a.baseFte > 0 ? a.pipelineFte / a.baseFte : 0) - (a.benchmark || 0) / 100;
-      vb = (b.baseFte > 0 ? b.pipelineFte / b.baseFte : 0) - (b.benchmark || 0) / 100;
+      va = ((a.pipelineFte || 0) > 0 ? (a.estimatedFteBenefit || 0) / (a.pipelineFte || 0) : 0) - (a.benchmark || 0) / 100;
+      vb = ((b.pipelineFte || 0) > 0 ? (b.estimatedFteBenefit || 0) / (b.pipelineFte || 0) : 0) - (b.benchmark || 0) / 100;
     } else {
       va = a[sortState.col] ?? '';
       vb = b[sortState.col] ?? '';
@@ -468,10 +776,9 @@ function renderInputTableHeader() {
   ]);
 
   SORTABLE_COLS.forEach(col => {
+    if (col.key === 'actionPlan') return;
     const th = document.createElement('th');
     th.style.whiteSpace = 'nowrap';
-    if (col.key === 'tower') th.style.minWidth = '90px';
-    if (col.key === 'region') th.style.minWidth = '72px';
     const isSortable = sortableCols.has(col.key);
     const isActive = sortState.col === col.key;
     const arrow = isActive ? (sortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
@@ -480,12 +787,23 @@ function renderInputTableHeader() {
       : escHtml(col.label);
     if (isActive) th.classList.add('sort-active');
     tr.appendChild(th);
+    makeColumnResizable(th, 'input-' + col.key);
   });
 
   const thAct = document.createElement('th');
   thAct.style.width = '50px';
   thAct.textContent = 'Action';
   tr.appendChild(thAct);
+  makeColumnResizable(thAct, 'input-action');
+
+  const actionPlanCol = SORTABLE_COLS.find(c => c.key === 'actionPlan');
+  if (actionPlanCol) {
+    const thAP = document.createElement('th');
+    thAP.style.whiteSpace = 'nowrap';
+    thAP.innerHTML = escHtml(actionPlanCol.label);
+    tr.appendChild(thAP);
+    makeColumnResizable(thAP, 'input-' + actionPlanCol.key);
+  }
 }
 
 // ==========================================
@@ -498,7 +816,8 @@ function renderInputTable() {
   const tbody = document.getElementById('inputTableBody');
   tbody.innerHTML = '';
 
-  let totalBaseline = 0, totalPipeline = 0, totalSavings = 0, totalCost = 0;
+  let totalBaseline = 0, totalAddressable = 0, totalPipeline = 0, totalSavings = 0, totalCost = 0, totalRealized = 0, totalEstBenefit = 0;
+  let sumBenchmark = 0, countRows = 0;
 
   const rows = getSortedRows();
 
@@ -510,65 +829,117 @@ function renderInputTable() {
   rows.forEach(row => {
     const rowId = row.id;
     const active = isAssessmentActive(row.assessment);
-    const remainingPotential = (row.pipelineFte || 0) - (row.estimatedFteBenefit || 0);
+    const baseVal = row.baseFte === '' ? 0 : parseFloat(row.baseFte || 0);
+    const addrVal = getRowAddressableFte(row);
+    const pipeVal = row.pipelineFte === '' ? 0 : parseFloat(row.pipelineFte || 0);
+    const benVal = row.estimatedFteBenefit === '' ? 0 : parseFloat(row.estimatedFteBenefit || 0);
+    const realizedVal = row.realizedFte === '' ? 0 : parseFloat(row.realizedFte || 0);
+    const costVal = row.implementationCost === '' ? 0 : parseFloat(row.implementationCost || 0);
+    const savingsVal = row.dollarSavings === '' ? 0 : parseFloat(row.dollarSavings || 0);
+    
+    const remainingPotential = (row.pipelineFte === '' ? 0 : parseFloat(row.pipelineFte)) - (row.estimatedFteBenefit === '' ? 0 : parseFloat(row.estimatedFteBenefit));
 
-    totalBaseline += parseFloat(row.baseFte || 0);
-    totalPipeline += parseFloat(row.pipelineFte || 0);
-    totalSavings += parseFloat(row.dollarSavings || 0);
-    totalCost += parseFloat(row.implementationCost || 0);
+    totalBaseline += baseVal;
+    totalAddressable += addrVal;
+    totalPipeline += pipeVal;
+    totalSavings += savingsVal;
+    totalCost += costVal;
+    totalRealized += realizedVal;
+    totalEstBenefit += benVal;
 
-    const actualPct = row.baseFte > 0 ? (row.pipelineFte / row.baseFte) : 0;
-    const benchmarkPct = (row.benchmark || 0) / 100;
-    const variance = actualPct - benchmarkPct;
-    const savingsVal = parseFloat(row.dollarSavings || 0);
-
-    // Owner dropdown
-    let ownerOpts = `<option value="None" ${row.owner === 'None' || !row.owner ? 'selected' : ''}>None</option>`;
-    Object.keys(state.owners).forEach(n => {
-      ownerOpts += `<option value="${escHtml(n)}" ${row.owner === n ? 'selected' : ''}>${escHtml(n)}</option>`;
-    });
-
-    // Mail link
-    const ownerEmail = state.owners[row.owner] || '';
-    let emailAnchor = '';
-    if (ownerEmail) {
-      const subj = encodeURIComponent(`AI Penetration Status - ${row.client} ${row.tower}`);
-      const body = encodeURIComponent(`Hi ${row.owner},\n\nStatus update for ${row.client} - ${row.tower}.\nBaseline FTE: ${row.baseFte}\nAgentic Potential: ${row.pipelineFte}\nInitiative: ${row.initiative || 'None'}\n\nRegards`);
-      emailAnchor = `<a href="mailto:${ownerEmail}?subject=${subj}&body=${body}" class="email-link-btn" title="Email ${row.owner}">✉</a>`;
+    if (row.benchmark !== undefined && row.benchmark !== '') {
+      sumBenchmark += parseFloat(row.benchmark) || 0;
+      countRows++;
     }
 
-    // Tower dropdown
-    const towerOpts = state.towers.map(t =>
-      `<option value="${escHtml(t)}" ${row.tower === t ? 'selected' : ''}>${escHtml(t)}</option>`
-    ).join('');
+    const actualPct = pipeVal > 0 ? (benVal / pipeVal) : 0;
+    const benchmarkPct = (row.benchmark || 0) / 100;
+    const variance = actualPct - benchmarkPct;
 
-    // Region dropdown
-    const regionOpts = `<option value="" ${!row.region ? 'selected' : ''}>-- Select --</option>` +
+    // Client dropdown options
+    let clientOpts = `<option value="" ${!row.client ? 'selected' : ''}>-- Select Client --</option>`;
+    state.clients.forEach(c => {
+      clientOpts += `<option value="${escHtml(c)}" ${row.client === c ? 'selected' : ''}>&nbsp;&nbsp;${escHtml(c)}</option>`;
+    });
+
+    // Region dropdown options
+    const regionOpts = `<option value="" ${!row.region ? 'selected' : ''}>-- Select Region --</option>` +
       state.regions.map(r =>
         `<option value="${escHtml(r)}" ${row.region === r ? 'selected' : ''}>${escHtml(r)}</option>`
       ).join('');
 
+    // Tower dropdown options
+    const towerOpts = `<option value="" ${!row.tower ? 'selected' : ''}>-- Select Tower --</option>` +
+      state.towers.map(t =>
+        `<option value="${escHtml(t)}" ${row.tower === t ? 'selected' : ''}>${escHtml(t)}</option>`
+      ).join('');
+
     // Client Approval options
-    const decisionOpts = ['', 'Deployed', 'Potential but lack CBA', 'In progress', 'Awaiting client approvals', 'Not Applicable'].map(v =>
+    const decisionOpts = ['', 'Deployed', 'Potential but lack CBA', 'In progress', 'Awaiting client approvals', 'Dropped'].map(v =>
       `<option value="${v}" ${row.decision === v ? 'selected' : ''}>${v === '' ? 'Select' : v}</option>`
     ).join('');
 
+    // Proposed Asset select options
+    let assetOpts = `<option value="" ${!row.initiative ? 'selected' : ''}>-- Select Asset --</option>`;
+    state.assets.forEach(a => {
+      assetOpts += `<option value="${escHtml(a)}" ${row.initiative === a ? 'selected' : ''}>${escHtml(a)}</option>`;
+    });
+    assetOpts += `<option value="__custom__">+ Enter Custom Asset...</option>`;
+
     // Initiative Type dropdown
-    const typeOpts = [`<option value="" ${!row.initiativeType ? 'selected' : ''}>-- Select --</option>`,
+    const typeOpts = [`<option value="" ${!row.initiativeType ? 'selected' : ''}>-- Select Type --</option>`,
     ...state.initiativeTypes.map(t => `<option value="${escHtml(t)}" ${row.initiativeType === t ? 'selected' : ''}>${escHtml(t)}</option>`)
     ].join('');
 
-    const dis = active ? '' : 'disabled';
+    // Owner cell content (Pencil Swap & Direct mail)
+    let ownerCellContent = '';
+    const ownerName = row.owner || 'None';
+    const ownerEmail = state.owners[ownerName] || '';
+    
+    if (editingOwnerRowId === rowId) {
+      let ownerOpts = `<option value="None" ${ownerName === 'None' ? 'selected' : ''}>None</option>`;
+      Object.keys(state.owners).forEach(n => {
+        ownerOpts += `<option value="${escHtml(n)}" ${ownerName === n ? 'selected' : ''}>${escHtml(n)}</option>`;
+      });
+      ownerCellContent = `
+        <select onchange="handleOwnerDropdownChange('${rowId}', this.value)" style="width: 100px;">
+          ${ownerOpts}
+        </select>
+        <button class="owner-edit-btn" onclick="cancelOwnerEdit()" title="Cancel">✕</button>
+      `;
+    } else {
+      let emailAnchor = '';
+      if (ownerEmail && ownerName !== 'None') {
+        const rem = pipeVal - benVal;
+        const subj = encodeURIComponent(`AI Penetration Status Update - ${row.client || 'Client'} [${row.tower || 'Tower'}]`);
+        const body = encodeURIComponent(`Hi ${ownerName},\n\nHere is the current AI Penetration dashboard metrics for ${row.client || 'Client'} - ${row.tower || 'Tower'}:\n\n- Baseline FTE: ${row.baseFte || 0}\n- Addressable FTE: ${row.addressableFte || 0}\n- Assessment Status: ${row.assessment || 'Not Started'}\n- AI Potential FTE: ${row.pipelineFte || 0}\n- Client Approval Status: ${row.decision || 'Ideation'}\n- Proposed Asset: ${row.initiative || 'None'}\n- Asset Type: ${row.initiativeType || 'None'}\n- Est. FTE Benefit: ${row.estimatedFteBenefit || 0}\n- Implementation Cost: ${(row.implementationCost || 0).toLocaleString()}\n- Annual $ Savings: ${(row.dollarSavings || 0).toLocaleString()}\n- Remaining Potential FTE: ${rem || 0}\n- Stack: ${row.stack || 'None'}\n\nPlease review and let us know if there are any updates.\n\nRegards`);
+        emailAnchor = `<a href="mailto:${ownerEmail}?subject=${subj}&body=${body}" class="owner-email-icon-btn" title="Email ${ownerName}">✉</a>`;
+      }
+      
+      ownerCellContent = `
+        <span class="owner-name-text" style="font-size:9.5px;max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escHtml(ownerName)}</span>
+        ${emailAnchor}
+        <button class="owner-edit-btn" onclick="startOwnerEdit('${rowId}')" title="Edit Owner">✎</button>
+      `;
+    }
 
-    // Savings color inline style
+    // Calculations
+    const aiPotentialPct = addrVal > 0 ? (pipeVal / addrVal) : 0;
+    const benefitPct = pipeVal > 0 ? (benVal / pipeVal) : 0;
+
+    // Conditional formats classes
+    const aiPotentialClass = getPctColorClass(aiPotentialPct);
+    const benefitClass = getPctColorClass(benefitPct);
+
+    const dis = active ? '' : 'disabled';
     const savCol = savingsVal < 0 ? 'color:#c62828;font-weight:700;' : savingsVal > 0 ? 'color:#2e7d32;font-weight:700;' : '';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
-        <input type="text" class="editable-cell-input" value="${escHtml(row.client)}"
-          onfocus="savePrev('${rowId}::client', this.value)"
-          onchange="handleRowInputChange('${rowId}', 'client', this)">
+        <select onchange="handleClientChange('${rowId}', this.value)" class="editable-cell-select" style="font-weight: 600;">
+          ${clientOpts}
+        </select>
       </td>
       <td>
         <select onchange="handleRegionChange('${rowId}', this.value)">
@@ -585,7 +956,11 @@ function renderInputTable() {
           onchange="handleBaseFteChange('${rowId}', this)" style="width:48px;">
       </td>
       <td>
-        <select onchange="handleAssessmentChange('${rowId}', this.value)">
+        <input type="number" min="0" step="1" value="${row.addressableFte}"
+          onchange="handleAddressableFteChange('${rowId}', this)" style="width:48px;">
+      </td>
+      <td>
+        <select class="assessment-select ${getAssessmentColorClass(row.assessment)}" onchange="handleAssessmentChange('${rowId}', this.value)">
           <option value="Not Started" ${row.assessment === 'Not Started' ? 'selected' : ''}>Not Started</option>
           <option value="In Progress" ${row.assessment === 'In Progress' ? 'selected' : ''}>In Progress</option>
           <option value="Completed"   ${row.assessment === 'Completed' ? 'selected' : ''}>Completed</option>
@@ -593,23 +968,19 @@ function renderInputTable() {
         </select>
       </td>
       <td>
-        <input type="number" min="0" step="1" value="${row.pipelineFte || 0}"
+        <input type="number" min="0" step="1" value="${row.pipelineFte}"
           onchange="handlePipelineFteChange('${rowId}', this)" style="width:50px;" ${dis}>
       </td>
       <td>
         <select class="decision-select ${getDecisionColorClass(row.decision)}"
-          onchange="handleDecisionDropdownChange('${rowId}', this.value)">
+          onchange="handleDecisionDropdownChange('${rowId}', this.value)" ${dis}>
           ${decisionOpts}
         </select>
       </td>
-      <td style="position:relative;">
-        <input type="text" class="editable-cell-input initiative-input" id="init-input-${rowId}"
-          value="${escHtml(row.initiative || '')}" autocomplete="off"
-          onfocus="savePrev('${rowId}::initiative', this.value); showInitiativeSuggestions('${rowId}', this)"
-          oninput="filterInitiativeSuggestions('${rowId}', this.value)"
-          onchange="handleInitiativeInputChange('${rowId}', this.value)"
-          ${dis} placeholder="Type or select asset">
-        <div class="initiative-suggestions" id="sugg-${rowId}" style="display:none;"></div>
+      <td>
+        <select onchange="handleProposedAssetChange('${rowId}', this.value)" class="editable-cell-select" ${dis}>
+          ${assetOpts}
+        </select>
       </td>
       <td>
         <select ${dis} onchange="updateRowField('${rowId}', 'initiativeType', this.value)">
@@ -617,39 +988,50 @@ function renderInputTable() {
         </select>
       </td>
       <td>
-        <input type="number" min="0" step="0.5" value="${row.estimatedFteBenefit || 0}"
+        <input type="text" value="${escHtml(row.stack || '')}" style="width:65px;" ${dis}
+          onchange="updateRowField('${rowId}', 'stack', this.value.trim())" placeholder="Stack">
+      </td>
+      <td>
+        <input type="number" min="0" step="0.5" value="${row.estimatedFteBenefit}"
           onchange="handleFteBenefitChange('${rowId}', this.value)" style="width:55px;" ${dis}>
       </td>
       <td>
-        <input type="number" min="0" value="${row.implementationCost || 0}"
-          onchange="updateRowField('${rowId}', 'implementationCost', parseFloat(this.value)||0)" style="width:70px;" ${dis}>
+        <input type="number" min="0" step="0.5" value="${row.realizedFte || ''}"
+          onchange="handleRealizedFteChange('${rowId}', this)" style="width:55px;" ${dis}>
       </td>
       <td>
-        <input type="number" value="${row.dollarSavings || 0}" style="width:75px;${savCol}"
+        <input type="number" min="0" value="${row.implementationCost}"
+          onchange="updateRowField('${rowId}', 'implementationCost', this.value===''?'':(parseFloat(this.value)||0))" style="width:70px;" ${dis}>
+      </td>
+      <td>
+        <input type="number" value="${row.dollarSavings}" style="width:75px;${savCol}"
           onchange="handleSavingsChange('${rowId}', this)" ${dis}>
       </td>
       <td class="col-num" style="font-weight:600;">${remainingPotential}</td>
       <td>
-        <div class="owner-cell-container">
-          <select onchange="updateRowField('${rowId}', 'owner', this.value)">${ownerOpts}</select>
-          ${emailAnchor}
+        <div class="owner-cell-container" style="display:flex;align-items:center;gap:4px;">
+          ${ownerCellContent}
         </div>
       </td>
-      <td class="col-num">${(actualPct * 100).toFixed(1)}%</td>
+      <td class="col-num ${aiPotentialClass}" ${aiPotentialClass === 'status-potential' ? 'style="color:#276a3c;font-weight:600;"' : (aiPotentialClass ? 'style="color:#fff;font-weight:600;"' : '')}>${(aiPotentialPct * 100).toFixed(1)}%</td>
+      <td class="col-num ${benefitClass}" ${benefitClass === 'status-potential' ? 'style="color:#276a3c;font-weight:600;"' : (benefitClass ? 'style="color:#fff;font-weight:600;"' : '')}>${(benefitPct * 100).toFixed(1)}%</td>
       <td>
         <input type="number" min="0" max="100" value="${row.benchmark || 20}"
           onchange="updateRowField('${rowId}', 'benchmark', parseFloat(this.value)||0)" style="width:45px;" ${dis}>%
       </td>
       <td class="col-num ${variance >= 0 ? 'val-positive' : 'val-negative'}">
-        ${variance >= 0 ? '+' : ''}${(variance * 100).toFixed(1)}%
+        ${variance >= 0 ? '+' : ''}&nbsp;${(variance * 100).toFixed(1)}%
       </td>
       <td class="col-center">
         <button class="btn btn-sm btn-danger" onclick="handleDeleteRow('${rowId}')">Delete</button>
       </td>
+      <td>
+        <input type="text" value="${escHtml(row.actionPlan || '')}" style="width: 100%; box-sizing: border-box;" ${dis}
+          onchange="handleRowActionPlanChange('${rowId}', this)" placeholder="Action plan">
+      </td>
     `;
     tbody.appendChild(tr);
 
-    // Grey out disabled inputs via JS (to override CSS specificity)
     if (!active) {
       tr.querySelectorAll('input[disabled], select[disabled]').forEach(el => {
         el.style.background = '#f0f0f0';
@@ -659,7 +1041,6 @@ function renderInputTable() {
       });
     }
 
-    // Re-apply savings color
     const savInput = tr.querySelector(`input[onchange*="handleSavingsChange"]`);
     if (savInput) {
       savInput.style.color = savingsVal < 0 ? '#c62828' : savingsVal > 0 ? '#2e7d32' : '';
@@ -670,17 +1051,25 @@ function renderInputTable() {
   // Totals footer
   const tfoot = document.getElementById('inputTableTotals');
   const savCol = totalSavings < 0 ? 'color:#c62828;' : totalSavings > 0 ? 'color:#2e7d32;' : '';
+  
+  const totalBenefitPct = totalPipeline > 0 ? (totalEstBenefit / totalPipeline) : 0;
+  const totalVariance = totalBenefitPct - (countRows > 0 ? (sumBenchmark / countRows) / 100 : 0.20);
+
   tfoot.innerHTML = `
-    <td colspan="2">TOTAL PORTFOLIO</td>
+    <td colspan="3">TOTAL PORTFOLIO</td>
     <td class="col-num">${totalBaseline}</td>
+    <td class="col-num">${totalAddressable}</td>
     <td></td>
     <td class="col-num">${totalPipeline}</td>
-    <td colspan="4"></td>
-    <td class="col-num">$${totalCost.toLocaleString()}</td>
-    <td class="col-num" style="${savCol}">$${totalSavings.toLocaleString()}</td>
+    <td colspan="5"></td>
+    <td class="col-num">${totalRealized}</td>
+    <td class="col-num">${totalCost.toLocaleString()}</td>
+    <td class="col-num" style="${savCol}">${totalSavings.toLocaleString()}</td>
     <td colspan="2"></td>
     <td class="col-num">${totalBaseline > 0 ? ((totalPipeline / totalBaseline) * 100).toFixed(1) : '0.0'}%</td>
     <td colspan="2"></td>
+    <td class="col-num ${totalVariance >= 0 ? 'val-positive' : 'val-negative'}">${totalVariance >= 0 ? '+' : ''}${(totalVariance * 100).toFixed(1)}%</td>
+    <td></td>
     <td></td>
   `;
 }
@@ -733,91 +1122,397 @@ function handleTowerChange(rowId, value) {
   renderInputTable();
 }
 
+function handleClientChange(rowId, val) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  
+  if (val) {
+    const towersForClient = new Set(state.rows.filter(r => r.client.toLowerCase() === val.toLowerCase() && r.id !== rowId).map(r => r.tower));
+    if (row.tower) towersForClient.add(row.tower);
+    if (towersForClient.size > 8) {
+      alert(`Client "${val}" already has ${towersForClient.size} towers (maximum 8 unique towers per client).`);
+      renderInputTable();
+      return;
+    }
+  }
+  
+  row.client = val;
+  renderInputTable();
+  saveData();
+}
+
+function handleTowerChange(rowId, value) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  
+  if (row.client) {
+    const towersForClient = new Set(state.rows.filter(r => r.client.toLowerCase() === row.client.toLowerCase() && r.id !== rowId).map(r => r.tower));
+    if (value) towersForClient.add(value);
+    if (towersForClient.size > 8) {
+      alert(`Client "${row.client}" already has ${towersForClient.size} towers (maximum 8 unique towers per client).`);
+      renderInputTable();
+      return;
+    }
+  }
+
+  row.tower = value;
+  if (!row.benchmark) row.benchmark = getTowerBenchmark(value);
+  renderInputTable();
+  saveData();
+}
+
 function handleBaseFteChange(rowId, input) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
-  let val = parseInt(input.value, 10);
+  const valStr = input.value.trim();
+  if (valStr === '') {
+    row.baseFte = '';
+    renderInputTable();
+    saveData();
+    return;
+  }
+  let val = parseInt(valStr, 10);
   if (isNaN(val) || val < 0) {
-    alert('Baseline FTE must be a whole number ≥ 0.');
+    alert('Baseline FTE must be a whole number ≥ 0 or blank.');
     input.value = row.baseFte;
     return;
   }
-  if (val < (row.pipelineFte || 0)) {
-    alert(`Baseline FTE (${val}) cannot be less than Agentic Potential FTE (${row.pipelineFte}). Please reduce Agentic Potential FTE first.`);
+  
+  if (row.addressableFte !== '' && val < parseFloat(row.addressableFte)) {
+    alert(`Baseline FTE (${val}) cannot be less than Addressable FTE (${row.addressableFte}).`);
     input.value = row.baseFte;
     return;
   }
+  
+  if (row.pipelineFte !== '' && val < parseFloat(row.pipelineFte || 0)) {
+    alert(`Baseline FTE (${val}) cannot be less than Agentic Potential FTE (${row.pipelineFte}).`);
+    input.value = row.baseFte;
+    return;
+  }
+  
+  if (!validateClientTowerFteConstraint(row.client, row.tower, rowId, undefined, val)) {
+    alert(`Validation Error: The sum of Addressable FTEs would exceed the maximum Baseline FTE (${val}) for this Client + Tower.`);
+    input.value = row.baseFte;
+    return;
+  }
+  
   row.baseFte = val;
   renderInputTable();
+  saveData();
+}
+
+function handleAddressableFteChange(rowId, input) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  const valStr = input.value.trim();
+  if (valStr === '') {
+    row.addressableFte = '';
+    renderInputTable();
+    saveData();
+    return;
+  }
+  const val = parseFloat(valStr);
+  if (isNaN(val) || val < 0) {
+    alert('Addressable FTE must be a positive number or left blank.');
+    input.value = row.addressableFte;
+    return;
+  }
+  
+  const baseVal = row.baseFte === '' ? 0 : parseFloat(row.baseFte);
+  if (val > baseVal) {
+    alert(`Addressable FTE (${val}) cannot exceed Baseline FTE (${baseVal}).`);
+    input.value = row.addressableFte;
+    return;
+  }
+  
+  const pipeVal = row.pipelineFte === '' ? 0 : parseFloat(row.pipelineFte);
+  if (val < pipeVal) {
+    alert(`Addressable FTE (${val}) cannot be less than AI Potential FTE (${pipeVal}).`);
+    input.value = row.addressableFte;
+    return;
+  }
+  
+  if (!validateClientTowerFteConstraint(row.client, row.tower, rowId, valStr, undefined)) {
+    alert(`Validation Error: The sum of Addressable FTEs for this Client + Tower combination cannot exceed the maximum Baseline FTE (${getMaxBaseFteForClientTower(row.client, row.tower, rowId, undefined)}).`);
+    input.value = row.addressableFte;
+    return;
+  }
+  
+  row.addressableFte = val;
+  renderInputTable();
+  saveData();
 }
 
 function handlePipelineFteChange(rowId, input) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
-  let val = parseFloat(input.value) || 0;
+  const valStr = input.value.trim();
+  if (valStr === '') {
+    row.pipelineFte = '';
+    renderInputTable();
+    saveData();
+    return;
+  }
+  let val = parseFloat(valStr) || 0;
   if (val < 0) { alert('Agentic Potential FTE cannot be negative.'); input.value = row.pipelineFte || 0; return; }
-  if (val > row.baseFte) {
-    alert(`Agentic Potential FTE (${val}) cannot exceed Baseline FTE (${row.baseFte}).`);
+  
+  const addrVal = row.addressableFte === '' ? (row.baseFte === '' ? 0 : parseFloat(row.baseFte)) : parseFloat(row.addressableFte);
+  if (val > addrVal) {
+    alert(`AI Potential FTE (${val}) cannot exceed Addressable FTE (${addrVal}).`);
     input.value = row.pipelineFte || 0;
     return;
   }
+  
+  if (row.realizedFte !== '' && val < parseFloat(row.realizedFte)) {
+    alert(`AI Potential FTE (${val}) cannot be less than Realized FTE (${row.realizedFte}).`);
+    input.value = row.pipelineFte || '';
+    return;
+  }
+  if (row.estimatedFteBenefit !== '' && val < parseFloat(row.estimatedFteBenefit)) {
+    alert(`AI Potential FTE (${val}) cannot be less than Est. FTE Benefit (${row.estimatedFteBenefit}).`);
+    input.value = row.pipelineFte || '';
+    return;
+  }
+  
   row.pipelineFte = val;
   renderInputTable();
+  saveData();
+}
+
+function handleRealizedFteChange(rowId, input) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  const valStr = input.value.trim();
+  if (valStr === '') {
+    row.realizedFte = '';
+    renderInputTable();
+    saveData();
+    return;
+  }
+  const val = parseFloat(valStr);
+  if (isNaN(val) || val < 0) {
+    alert('Realized FTE must be a positive number or left blank.');
+    input.value = row.realizedFte || '';
+    return;
+  }
+  
+  const pipeVal = row.pipelineFte === '' ? 0 : parseFloat(row.pipelineFte || 0);
+  if (val > pipeVal) {
+    alert(`Realized FTE (${val}) cannot exceed AI Potential FTE (${pipeVal}).`);
+    input.value = row.realizedFte || '';
+    return;
+  }
+  
+  row.realizedFte = val;
+  renderInputTable();
+  saveData();
+}
+
+function handleFteBenefitChange(rowId, valStr) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  const valTrim = valStr.trim();
+  if (valTrim === '') {
+    row.estimatedFteBenefit = '';
+    if (row.initiative) {
+      const cellId = `${rowId}::${row.initiative}`;
+      if (state.cellData[cellId]) {
+        state.cellData[cellId].fte = 0;
+      }
+    }
+    renderInputTable();
+    saveData();
+    return;
+  }
+  const val = parseFloat(valTrim);
+  if (isNaN(val) || val < 0) {
+    alert('Estimated FTE Benefit must be a positive number or left blank.');
+    renderInputTable();
+    return;
+  }
+  const pipeVal = row.pipelineFte === '' ? 0 : parseFloat(row.pipelineFte || 0);
+  if (val > pipeVal) {
+    alert(`Est. FTE Benefit (${val}) cannot exceed AI Potential FTE (${pipeVal}).`);
+    renderInputTable();
+    return;
+  }
+  row.estimatedFteBenefit = val;
+  if (row.initiative) {
+    const cellId = `${rowId}::${row.initiative}`;
+    if (!state.cellData[cellId]) {
+      state.cellData[cellId] = { fte: val, status: row.decision || 'Not Applicable' };
+    } else {
+      state.cellData[cellId].fte = val;
+    }
+  }
+  renderInputTable();
+  saveData();
 }
 
 function handleAssessmentChange(rowId, value) {
   const row = state.rows.find(r => r.id === rowId);
   if (row) row.assessment = value;
   renderInputTable();
+  saveData();
 }
 
 function updateRowField(rowId, field, value) {
   const row = state.rows.find(r => r.id === rowId);
   if (row) row[field] = value;
   renderInputTable();
+  saveData();
 }
 
 function handleSavingsChange(rowId, input) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
-  const val = parseFloat(input.value) || 0;
+  const valStr = input.value.trim();
+  if (valStr === '') {
+    row.dollarSavings = '';
+    saveData();
+    return;
+  }
+  const val = parseFloat(valStr) || 0;
   row.dollarSavings = val;
-  // Color
   input.style.color = val < 0 ? '#c62828' : val > 0 ? '#2e7d32' : '';
   input.style.fontWeight = val !== 0 ? '700' : '';
+  saveData();
 }
 
 function handleDecisionDropdownChange(rowId, value) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
   row.decision = value;
+  
+  // Sync the cellData for this row's proposed asset if initiative is set
   if (row.initiative) {
     const cellId = `${rowId}::${row.initiative}`;
-    if (!state.cellData[cellId]) state.cellData[cellId] = { fte: row.estimatedFteBenefit || 0, status: 'Not Applicable' };
-    if (value) state.cellData[cellId].status = value;
+    if (state.cellData[cellId]) {
+      state.cellData[cellId].status = value || 'Not Applicable';
+    } else {
+      state.cellData[cellId] = { fte: row.estimatedFteBenefit || 0, status: value || 'Not Applicable' };
+    }
   }
+  
   renderInputTable();
+  if (activeTab === 'tab-assets') renderAssetGrid();
+  saveData();
 }
 
-function handleFteBenefitChange(rowId, value) {
+function handleProposedAssetChange(rowId, val) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
-  const fteNum = parseFloat(value) || 0;
-  row.estimatedFteBenefit = fteNum;
+  
+  if (val === '__custom__') {
+    const customAsset = prompt('Enter new custom asset name:');
+    if (customAsset === null) {
+      renderInputTable();
+      return;
+    }
+    const cleanAsset = customAsset.trim();
+    if (!cleanAsset) {
+      alert('Asset name cannot be blank.');
+      renderInputTable();
+      return;
+    }
+    if (state.assets.includes(cleanAsset)) {
+      alert('Asset already exists.');
+      row.initiative = cleanAsset;
+    } else {
+      if (state.assets.length >= 100) {
+        alert('Max 100 assets reached.');
+        renderInputTable();
+        return;
+      }
+      state.assets.push(cleanAsset);
+      row.initiative = cleanAsset;
+    }
+  } else {
+    row.initiative = val;
+  }
+  
   if (row.initiative) {
     const cellId = `${rowId}::${row.initiative}`;
-    if (!state.cellData[cellId]) state.cellData[cellId] = { fte: 0, status: row.decision || 'Not Applicable' };
-    state.cellData[cellId].fte = fteNum;
+    if (!state.cellData[cellId]) {
+      state.cellData[cellId] = { fte: row.estimatedFteBenefit || 0, status: row.decision || 'Not Applicable' };
+    }
   }
+  
+  renderInputTable();
+  if (activeTab === 'tab-assets') renderAssetGrid();
+  saveData();
+}
+
+function startOwnerEdit(rowId) {
+  editingOwnerRowId = rowId;
   renderInputTable();
 }
 
-// ==========================================
-// INITIATIVE AUTOCOMPLETE
-// ==========================================
-function showInitiativeSuggestions(rowId, inputEl) {
-  filterInitiativeSuggestions(rowId, inputEl.value);
+function cancelOwnerEdit() {
+  editingOwnerRowId = null;
+  renderInputTable();
 }
+
+function handleOwnerDropdownChange(rowId, value) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (row) {
+    row.owner = value;
+  }
+  editingOwnerRowId = null;
+  renderInputTable();
+  saveData();
+}
+
+function startClientOwnerEdit(client) {
+  editingClientOwner = client;
+  renderClientSummary();
+}
+
+function cancelClientOwnerEdit() {
+  editingClientOwner = null;
+  renderClientSummary();
+}
+
+function handleClientOwnerChange(client, selectedOwner) {
+  const clientRows = state.rows.filter(r => r.client && r.client.trim().toLowerCase() === client.trim().toLowerCase());
+  clientRows.forEach(r => r.owner = selectedOwner);
+  editingClientOwner = null;
+  renderClientSummary();
+  renderInputTable();
+  saveData();
+}
+
+function handleRowActionPlanChange(rowId, input) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  const val = input.value.trim();
+  const words = val.split(/\s+/).filter(w => w.length > 0);
+  if (words.length > 35) {
+    alert(`Action plan exceeds the limit of 35 words (current: ${words.length} words).`);
+    input.value = row.actionPlan || '';
+    return;
+  }
+  row.actionPlan = val;
+  saveData();
+}
+
+function handleClientActionPlanChange(client, input) {
+  const val = input.value.trim();
+  const words = val.split(/\s+/).filter(w => w.length > 0);
+  const clientRows = state.rows.filter(r => r.client && r.client.trim().toLowerCase() === client.trim().toLowerCase());
+  if (words.length > 35) {
+    alert(`Action plan exceeds the limit of 35 words (current: ${words.length} words).`);
+    input.value = clientRows[0]?.clientActionPlan || '';
+    return;
+  }
+  clientRows.forEach(r => r.clientActionPlan = val);
+  saveData();
+}
+
+// ==========================================
+// INITIATIVE AUTOCOMPLETE (Unused now, but kept for compatibility)
+// ==========================================
+function showInitiativeSuggestions(rowId, inputEl) {}
 
 function filterInitiativeSuggestions(rowId, query) {
   const el = document.getElementById(`sugg-${rowId}`);
@@ -896,33 +1591,30 @@ function handleInitiativeInputChange(rowId, value) {
 // ADD / DELETE ROW
 // ==========================================
 function handleAddRow() {
-  const uniqueCount = getUniqueClientCount();
-  let clientName = 'New Client';
-  let idx = 1;
-  while (getTowerCountForClient(clientName) >= 8) {
-    clientName = `New Client ${idx++}`;
-  }
-  const set = new Set(state.rows.map(r => r.client.trim()));
-  if (!set.has(clientName) && uniqueCount >= 500) { alert('500 client limit reached.'); return; }
-
   state.rows.push({
     id: `row_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-    client: clientName,
-    tower: state.towers[0] || 'PTP',
-    baseFte: 10,
+    client: '',
+    region: '',
+    tower: '',
+    baseFte: '',
+    addressableFte: '',
     assessment: 'Not Started',
-    pipelineFte: 0,
+    pipelineFte: '',
     decision: '',
     initiative: '',
     initiativeType: '',
-    estimatedFteBenefit: 0,
-    implementationCost: 0,
-    dollarSavings: 0,
+    estimatedFteBenefit: '',
+    realizedFte: '',
+    implementationCost: '',
+    dollarSavings: '',
     benchmark: 20,
     owner: 'None',
-    region: ''
+    stack: '',
+    actionPlan: '',
+    clientActionPlan: ''
   });
   renderInputTable();
+  saveData();
 }
 
 function handleDeleteRow(rowId) {
@@ -938,27 +1630,65 @@ function renderAssetGrid() {
   updateFilterDropdowns();
   document.getElementById('assetCount').textContent = state.assets.length;
   const headerRow = document.getElementById('gridHeaderRow');
-  headerRow.innerHTML = '<th>Client</th><th>Region</th><th>Tower</th><th>Base FTE</th>';
+  headerRow.innerHTML = '';
+
+  // Create base headers
+  const baseHeaders = [
+    { label: 'Client Name', key: 'grid-client' },
+    { label: 'Region', key: 'grid-region' },
+    { label: 'Tower', key: 'grid-tower' },
+    { label: 'Base FTE', key: 'grid-baseFte' }
+  ];
+
+  baseHeaders.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h.label;
+    headerRow.appendChild(th);
+    makeColumnResizable(th, h.key);
+  });
+
+  // Create Asset headers
+  const rotateHeaders = document.getElementById('rotateHeadersCheckbox')?.checked;
   state.assets.forEach(asset => {
     const th = document.createElement('th');
-    th.className = 'col-center';
-    th.textContent = asset;
+    th.className = 'col-center asset-header-th'; // Accenture digital blue header
+    
+    if (rotateHeaders) {
+      th.classList.add('rotated-header');
+      const inner = document.createElement('div');
+      inner.className = 'rotated-header-content';
+      inner.textContent = asset;
+      th.appendChild(inner);
+    } else {
+      th.textContent = asset;
+    }
+    
     headerRow.appendChild(th);
+    makeColumnResizable(th, 'grid-asset-' + asset);
   });
+
+  // Future State FTE header
   const thF = document.createElement('th');
   thF.className = 'col-center col-future-header';
   thF.textContent = 'Future State FTE';
   headerRow.appendChild(thF);
+  makeColumnResizable(thF, 'grid-future');
 
   const tbody = document.getElementById('gridBody');
   tbody.innerHTML = '';
 
-  // Apply filters to asset grid
-  const filteredRows = getFilteredRows();
+  // Apply filters and exclude Not Started & No Scale
+  let filteredRows = getFilteredRows();
+  filteredRows = filteredRows.filter(r => r.assessment !== 'Not Started' && r.assessment !== 'No Scale');
 
   filteredRows.forEach(row => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><strong>${escHtml(row.client)}</strong></td><td>${escHtml(row.region || '')}</td><td><strong>${escHtml(row.tower)}</strong></td><td class="col-num">${row.baseFte}</td>`;
+    tr.innerHTML = `
+      <td><strong>${escHtml(row.client || '')}</strong></td>
+      <td>${escHtml(row.region || '')}</td>
+      <td><strong>${escHtml(row.tower || '')}</strong></td>
+      <td class="col-num">${row.baseFte || 0}</td>
+    `;
 
     let deployed = 0, potential = 0, inprog = 0;
     state.assets.forEach(asset => {
@@ -967,7 +1697,7 @@ function renderAssetGrid() {
       const fteVal = parseFloat(cell.fte || 0);
       if (cell.status === 'Deployed') deployed += fteVal;
       else if (cell.status === 'Potential but lack CBA') potential += fteVal;
-      else if (cell.status === 'In progress') inprog += fteVal;
+      else if (cell.status === 'In progress' || cell.status === 'In Progress') inprog += fteVal;
 
       const td = document.createElement('td');
       td.className = `asset-cell status-${getCellStatusClass(cell.status)}`;
@@ -976,13 +1706,18 @@ function renderAssetGrid() {
       tr.appendChild(td);
     });
 
-    const future = row.baseFte - deployed - potential - inprog;
+    const baseVal = row.baseFte === '' ? 0 : parseFloat(row.baseFte || 0);
+    const future = baseVal - deployed - potential - inprog;
     const tdF = document.createElement('td');
     tdF.className = 'col-future-cell';
     tdF.textContent = future;
     tr.appendChild(tdF);
     tbody.appendChild(tr);
   });
+}
+
+function toggleHeaderRotation(checked) {
+  renderAssetGrid();
 }
 
 // ==========================================
@@ -1037,6 +1772,7 @@ function handleSavePopover() {
 
   closePopover();
   renderAssetGrid();
+  saveData();
 }
 
 // ==========================================
@@ -1165,10 +1901,76 @@ function renderInsights() {
   renderApprovalChart();
   renderHeatmapChart();
   renderPotentialChart();
+  renderBillingTypeChart();
+  renderBenefitByAssetChart();
 
   // ---- Insights list ----
   renderInsightsList(towerStats, totalBaseline, totalPipeline, approvedCount, completedCount, pen);
 }
+
+// Inline plugin for displaying value labels inside or on top of chart elements
+const valueLabelPlugin = {
+  id: 'valueLabelPlugin',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (meta && meta.data) {
+        meta.data.forEach((element, index) => {
+          const dataVal = dataset.data[index];
+          if (dataVal === undefined || dataVal === null || dataVal === 0 || dataVal === "0" || dataVal === "0.0") return;
+
+          ctx.fillStyle = '#333';
+          ctx.font = 'bold 8.5px Outfit';
+
+          let label = dataVal.toString();
+
+          // Check if chart displays percentages
+          const isTowerChart = chart.canvas && chart.canvas.id === 'insightsChart';
+          const isBillingChart = chart.canvas && chart.canvas.id === 'billingTypeChart';
+          const isHeatmapChart = chart.canvas && chart.canvas.id === 'heatmapChart';
+
+          if (isTowerChart || isBillingChart || isHeatmapChart) {
+            label = parseFloat(dataVal).toFixed(1) + '%';
+          }
+
+          let x = element.x;
+          let y = element.y;
+          try {
+            if (element.tooltipPosition) {
+              const pos = element.tooltipPosition();
+              if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+                x = pos.x;
+                y = pos.y;
+              }
+            }
+          } catch (e) {
+            // fallback to element x,y
+          }
+
+          if (chart.config && chart.config.type === 'doughnut') {
+            // Put the label in the center of the arc slice
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff'; // White text on doughnut slices
+            ctx.font = 'bold 9px Outfit';
+            ctx.fillText(label, x, y);
+          } else if (chart.config && chart.config.options && chart.config.options.indexAxis === 'y') {
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x + 3, y);
+          } else {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(label, x, y - 2);
+          }
+        });
+      }
+    });
+    ctx.restore();
+  }
+};
 
 // Chart 1: Pipeline vs Benchmark by Tower
 function renderTowerChart(towerStats) {
@@ -1191,7 +1993,8 @@ function renderTowerChart(towerStats) {
       responsive: true, maintainAspectRatio: false,
       scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } },
       plugins: { legend: { position: 'top', labels: { font: { size: 9 }, boxWidth: 10 } } }
-    }
+    },
+    plugins: [valueLabelPlugin]
   });
 }
 
@@ -1236,7 +2039,8 @@ function renderApprovalChart() {
         legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10 } },
         tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} clients` } }
       }
-    }
+    },
+    plugins: [valueLabelPlugin]
   });
 }
 
@@ -1246,7 +2050,6 @@ function renderHeatmapChart() {
   const ctx = document.getElementById('heatmapChart');
   if (!ctx || state.assets.length === 0) return;
 
-  // Per unique client: total deployed+in-progress cells / total possible cells
   const clientMap = {};
   state.rows.forEach(row => {
     const c = row.client;
@@ -1282,7 +2085,8 @@ function renderHeatmapChart() {
         y: { stacked: true, ticks: { font: { size: 9 } } }
       },
       plugins: { legend: { position: 'top', labels: { font: { size: 9 }, boxWidth: 10 } } }
-    }
+    },
+    plugins: [valueLabelPlugin]
   });
 }
 
@@ -1293,19 +2097,15 @@ function renderPotentialChart() {
   if (!ctx) return;
 
   const clientPotential = {};
-  const clientCBA_count = {};  // assets with Potential but lack CBA per client
-
   state.rows.forEach(row => {
     const c = row.client;
-    if (!clientPotential[c]) { clientPotential[c] = 0; clientCBA_count[c] = 0; }
+    if (!clientPotential[c]) { clientPotential[c] = 0; }
     state.assets.forEach(asset => {
       const cell = state.cellData[`${row.id}::${asset}`];
       if (cell && cell.status === 'Potential but lack CBA') {
         clientPotential[c] += parseFloat(cell.fte || 0);
-        clientCBA_count[c]++;
       }
     });
-    // Also count from row-level decision
     if (row.decision === 'Potential but lack CBA') {
       clientPotential[c] += parseFloat(row.estimatedFteBenefit || 0);
     }
@@ -1317,7 +2117,6 @@ function renderPotentialChart() {
     .slice(0, 10);
 
   if (sorted.length === 0) {
-    // No data — show placeholder text
     const c2 = ctx.getContext('2d');
     c2.fillStyle = '#aaa';
     c2.font = '12px Outfit';
@@ -1349,7 +2148,125 @@ function renderPotentialChart() {
         legend: { display: false },
         tooltip: { callbacks: { label: c => ` ${c.raw.toFixed(0)} FTE potential` } }
       }
+    },
+    plugins: [valueLabelPlugin]
+  });
+}
+
+// Chart 5: AI Penetration by Billing Type (Polar Area Chart)
+function renderBillingTypeChart() {
+  destroyChart('billingType');
+  const ctx = document.getElementById('billingTypeChart');
+  if (!ctx) return;
+
+  const stats = {};
+  state.rows.forEach(row => {
+    let bt = row.billingType || 'FTE';
+    if (!stats[bt]) stats[bt] = { base: 0, pipe: 0 };
+    stats[bt].base += parseFloat(row.baseFte || 0);
+    stats[bt].pipe += parseFloat(row.pipelineFte || 0);
+  });
+
+  const labels = Object.keys(stats);
+  const data = labels.map(l => stats[l].base > 0 ? parseFloat(((stats[l].pipe / stats[l].base) * 100).toFixed(1)) : 0);
+
+  chartInstances['billingType'] = new Chart(ctx, {
+    type: 'polarArea',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: [
+          'rgba(31,73,125,0.75)',
+          'rgba(0,114,198,0.75)',
+          'rgba(112,173,71,0.75)',
+          'rgba(255,192,0,0.75)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          ticks: { callback: v => v + '%', font: { size: 8 } }
+        }
+      },
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10 } }
+      }
+    },
+    plugins: [valueLabelPlugin]
+  });
+}
+
+// Chart 6: Est. FTE Benefit by Asset (Top 10 Vertical Bar)
+function renderBenefitByAssetChart() {
+  destroyChart('benefitByAsset');
+  const ctx = document.getElementById('benefitByAssetChart');
+  if (!ctx) return;
+
+  const assetBenefits = {};
+  state.assets.forEach(asset => {
+    assetBenefits[asset] = 0;
+  });
+
+  Object.keys(state.cellData).forEach(key => {
+    const parts = key.split('::');
+    if (parts.length === 2) {
+      const rowId = parts[0];
+      const asset = parts[1];
+      const cell = state.cellData[key];
+      if (cell && cell.fte && cell.status !== 'Not Applicable') {
+        const row = state.rows.find(r => r.id === rowId);
+        if (row && row.assessment !== 'Not Started' && row.assessment !== 'No Scale') {
+          assetBenefits[asset] = (assetBenefits[asset] || 0) + parseFloat(cell.fte || 0);
+        }
+      }
     }
+  });
+
+  const sorted = Object.entries(assetBenefits)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  if (sorted.length === 0) {
+    const c2 = ctx.getContext('2d');
+    c2.fillStyle = '#aaa';
+    c2.font = '12px Outfit';
+    c2.textAlign = 'center';
+    c2.fillText('No asset benefit data found.', ctx.width / 2, ctx.height / 2);
+    return;
+  }
+
+  const labels = sorted.map(([name]) => name.length > 14 ? name.slice(0, 13) + '…' : name);
+  const data = sorted.map(([, v]) => v);
+
+  chartInstances['benefitByAsset'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Est. FTE Benefit',
+        data,
+        backgroundColor: 'rgba(0,114,198,0.85)',
+        borderColor: '#005a9e',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { font: { size: 9 } } },
+        y: { beginAtZero: true, ticks: { font: { size: 9 } } }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    },
+    plugins: [valueLabelPlugin]
   });
 }
 
@@ -1520,11 +2437,58 @@ function saveCustomInsightEdit(id) {
 // ==========================================
 function openModal(id) {
   document.getElementById(id).classList.add('active');
+  if (id === 'modal-client') populateClientModalList();
   if (id === 'modal-asset') populateAssetModalList();
   if (id === 'modal-owner') populateOwnerModalList();
   if (id === 'modal-tower') populateTowerModalList();
   if (id === 'modal-type') populateTypeModalList();
   if (id === 'modal-region') populateRegionModalList();
+}
+
+// --- Client Master ---
+function populateClientModalList() {
+  const c = document.getElementById('modalClientList');
+  if (!state.clients) state.clients = [];
+  c.innerHTML = state.clients.length
+    ? state.clients.map(cl => `
+      <div class="list-item">
+        <span><strong>${escHtml(cl)}</strong></span>
+        <button class="list-item-btn" onclick="handleDeleteClient('${escHtml(cl)}')">&times;</button>
+      </div>`).join('')
+    : '<div class="list-item" style="color:#aaa;">No clients defined.</div>';
+}
+
+function handleAddClient() {
+  const input = document.getElementById('newClientNameName');
+  const raw = input.value.trim();
+  if (!raw) return;
+  if (raw.length > 50) { alert('Client name too long (max 50 chars).'); return; }
+  if (!state.clients) state.clients = [];
+  if (state.clients.includes(raw)) { alert('Client already exists.'); return; }
+  state.clients.push(raw);
+  state.clients.sort((a, b) => a.localeCompare(b));
+  input.value = '';
+  populateClientModalList();
+  updateFilterDropdowns();
+  saveData();
+}
+
+function handleDeleteClient(clientName) {
+  if (!confirm(`Delete client "${clientName}"? This will delete all rows mapped to this client and their asset cell allocations.`)) return;
+  state.clients = state.clients.filter(c => c !== clientName);
+  
+  const toDelete = state.rows.filter(r => r.client === clientName).map(r => r.id);
+  toDelete.forEach(rowId => {
+    Object.keys(state.cellData).forEach(k => { if (k.startsWith(`${rowId}::`)) delete state.cellData[k]; });
+  });
+  
+  state.rows = state.rows.filter(r => r.client !== clientName);
+  
+  populateClientModalList();
+  updateFilterDropdowns();
+  renderInputTable();
+  if (activeTab === 'tab-assets') renderAssetGrid();
+  saveData();
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
@@ -1720,6 +2684,10 @@ function handleDeleteOwner(name) {
 // ==========================================
 // BULK XLS UPLOAD
 // ==========================================
+function normalizeKey(key) {
+  return String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 function handleBulkUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -1736,11 +2704,23 @@ function handleBulkUpload(event) {
       if (masterSheet) {
         const rows = XLSX.utils.sheet_to_json(wb.Sheets[masterSheet], { defval: '' });
         rows.forEach(r => {
-          const client = String(r['Client Name'] || r['Client'] || '').trim();
-          const tower = String(r['Tower'] || '').trim();
-          const region = String(r['Region'] || '').trim();
-          const init = String(r['Proposed Asset'] || r['Proposed Initiative'] || '').trim();
+          // Normalize row keys
+          const normRow = {};
+          Object.keys(r).forEach(k => {
+            normRow[normalizeKey(k)] = r[k];
+          });
+
+          const client = String(normRow['clientname'] || normRow['client'] || '').trim();
+          const tower = String(normRow['tower'] || '').trim();
+          const region = String(normRow['region'] || '').trim();
+          const init = String(normRow['proposedasset'] || normRow['proposedinitiative'] || normRow['asset'] || '').trim();
           if (!client || !tower) return;
+
+          // Auto-add client to master if not present
+          if (!state.clients.includes(client)) {
+            state.clients.push(client);
+          }
+          state.clients.sort((a, b) => a.localeCompare(b));
 
           // Auto-add tower to master if not present
           if (!state.towers.map(t => t.toLowerCase()).includes(tower.toLowerCase())) {
@@ -1760,19 +2740,151 @@ function handleBulkUpload(event) {
           );
 
           const applyFields = (target) => {
-            if (r['Region'] !== undefined) target.region = String(r['Region']).trim();
-            if (r['Baseline FTE'] !== '') target.baseFte = Math.max(0, parseInt(r['Baseline FTE']) || 0);
-            if (r['Assessment Status'] !== '') target.assessment = String(r['Assessment Status']).trim();
-            if (r['Agentic Potential FTE'] !== '') target.pipelineFte = parseFloat(r['Agentic Potential FTE']) || 0;
-            if (r['Client Decision'] !== '' || r['Client Approval for AI'] !== '') target.decision = String(r['Client Decision'] || r['Client Approval for AI'] || '').trim();
-            if (r['Proposed Asset'] !== undefined) target.initiative = String(r['Proposed Asset']).trim();
-            else if (r['Proposed Initiative'] !== '') target.initiative = String(r['Proposed Initiative']).trim();
-            if (r['Type'] !== '') target.initiativeType = String(r['Type']).trim();
-            if (r['Estimated FTE Benefit'] !== '') target.estimatedFteBenefit = parseFloat(r['Estimated FTE Benefit']) || 0;
-            if (r['Implementation Cost ($)'] !== '') target.implementationCost = parseFloat(r['Implementation Cost ($)']) || 0;
-            if (r['$ Savings'] !== '') target.dollarSavings = parseFloat(r['$ Savings']) || 0;
-            if (r['Benchmark %'] !== '') target.benchmark = parseFloat(String(r['Benchmark %']).replace('%', '')) || 20;
-            if (r['Owner'] !== '') target.owner = String(r['Owner']).trim() || 'None';
+            if (normRow['region'] !== undefined) target.region = String(normRow['region']).trim();
+            if (normRow['stack'] !== undefined) target.stack = String(normRow['stack']).trim();
+            
+            // Sequential parsing and validation
+            let newBase = target.baseFte;
+            let newAddr = target.addressableFte;
+            let newPipe = target.pipelineFte;
+            let newBen = target.estimatedFteBenefit;
+
+            // 1. Parse Baseline FTE
+            if (normRow['baselinefte'] !== undefined && normRow['baselinefte'] !== '') {
+              const val = parseInt(normRow['baselinefte'], 10);
+              if (!isNaN(val) && val >= 0) {
+                newBase = val;
+              }
+            }
+
+            // 2. Parse Addressable FTE
+            if (normRow['addressablefte'] !== undefined && normRow['addressablefte'] !== '') {
+              const val = parseFloat(normRow['addressablefte']);
+              if (!isNaN(val) && val >= 0) {
+                newAddr = val;
+              }
+            } else if (normRow['addressablefte'] === '') {
+              newAddr = '';
+            }
+
+            // 3. Parse AI Potential FTE
+            if (normRow['agenticpotentialfte'] !== undefined && normRow['agenticpotentialfte'] !== '') {
+              const val = parseFloat(normRow['agenticpotentialfte']);
+              if (!isNaN(val) && val >= 0) {
+                newPipe = val;
+              }
+            } else if (normRow['aipotentialfte'] !== undefined && normRow['aipotentialfte'] !== '') {
+              const val = parseFloat(normRow['aipotentialfte']);
+              if (!isNaN(val) && val >= 0) {
+                newPipe = val;
+              }
+            }
+
+            // 4. Parse Estimated FTE Benefit
+            if (normRow['estimatedftebenefit'] !== undefined && normRow['estimatedftebenefit'] !== '') {
+              const val = parseFloat(normRow['estimatedftebenefit']);
+              if (!isNaN(val) && val >= 0) {
+                newBen = val;
+              }
+            } else if (normRow['estftebenefit'] !== undefined && normRow['estftebenefit'] !== '') {
+              const val = parseFloat(normRow['estftebenefit']);
+              if (!isNaN(val) && val >= 0) {
+                newBen = val;
+              }
+            }
+
+            // Validation checks
+            let addrValid = true;
+            let pipeValid = true;
+            let benValid = true;
+            let realizedValid = true;
+
+            const baseVal = newBase === '' ? 0 : parseFloat(newBase);
+            const addrVal = newAddr === '' ? baseVal : parseFloat(newAddr);
+
+            if (newAddr !== '' && parseFloat(newAddr) > baseVal) {
+              addrValid = false;
+            }
+
+            const targetAddr = addrValid ? addrVal : (target.addressableFte === '' ? baseVal : parseFloat(target.addressableFte));
+            if (newPipe !== '' && parseFloat(newPipe) > targetAddr) {
+              pipeValid = false;
+            }
+
+            const targetPipe = pipeValid ? (newPipe === '' ? 0 : parseFloat(newPipe)) : (target.pipelineFte === '' ? 0 : parseFloat(target.pipelineFte));
+            if (newBen !== '' && parseFloat(newBen) > targetPipe) {
+              benValid = false;
+            }
+
+            // Realized FTE parsing
+            let newRealized = target.realizedFte;
+            if (normRow['realizedfte'] !== undefined && normRow['realizedfte'] !== '') {
+              const val = parseFloat(normRow['realizedfte']);
+              if (!isNaN(val) && val >= 0) {
+                newRealized = val;
+              }
+            } else if (normRow['realizedfte'] === '') {
+              newRealized = '';
+            }
+
+            if (newRealized !== '' && parseFloat(newRealized) > targetPipe) {
+              realizedValid = false;
+            }
+
+            target.baseFte = newBase;
+            if (addrValid) target.addressableFte = newAddr;
+            if (pipeValid) target.pipelineFte = newPipe;
+            if (benValid) target.estimatedFteBenefit = newBen;
+            if (realizedValid) target.realizedFte = newRealized;
+
+            // Rest of fields
+            if (normRow['assessmentstatus'] !== undefined && normRow['assessmentstatus'] !== '') {
+              target.assessment = String(normRow['assessmentstatus']).trim();
+            }
+            if (normRow['clientdecision'] !== undefined && normRow['clientdecision'] !== '') {
+              target.decision = String(normRow['clientdecision']).trim();
+            } else if (normRow['clientapprovalforai'] !== undefined && normRow['clientapprovalforai'] !== '') {
+              target.decision = String(normRow['clientapprovalforai']).trim();
+            } else if (normRow['status'] !== undefined && normRow['status'] !== '') {
+              target.decision = String(normRow['status']).trim();
+            }
+            
+            if (normRow['proposedasset'] !== undefined && normRow['proposedasset'] !== '') {
+              target.initiative = String(normRow['proposedasset']).trim();
+            } else if (normRow['proposedinitiative'] !== undefined && normRow['proposedinitiative'] !== '') {
+              target.initiative = String(normRow['proposedinitiative']).trim();
+            }
+            
+            if (normRow['type'] !== undefined && normRow['type'] !== '') {
+              target.initiativeType = String(normRow['type']).trim();
+            }
+            if (normRow['implementationcost'] !== undefined && normRow['implementationcost'] !== '') {
+              target.implementationCost = parseFloat(normRow['implementationcost']) || 0;
+            }
+            if (normRow['dollarsavings'] !== undefined && normRow['dollarsavings'] !== '') {
+              target.dollarSavings = parseFloat(normRow['dollarsavings']) || 0;
+            } else if (normRow['savings'] !== undefined && normRow['savings'] !== '') {
+              target.dollarSavings = parseFloat(normRow['savings']) || 0;
+            }
+            
+            if (normRow['benchmark'] !== undefined && normRow['benchmark'] !== '') {
+              let val = parseFloat(String(normRow['benchmark']).replace('%', ''));
+              if (!isNaN(val)) {
+                if (val > 0 && val <= 1) {
+                  val = val * 100;
+                }
+                target.benchmark = val;
+              }
+            }
+            if (normRow['owner'] !== undefined && normRow['owner'] !== '') {
+              target.owner = String(normRow['owner']).trim() || 'None';
+            }
+            if (normRow['actionplan'] !== undefined) {
+              target.actionPlan = String(normRow['actionplan']).trim();
+            }
+            if (normRow['clientactionplan'] !== undefined) {
+              target.clientActionPlan = String(normRow['clientactionplan']).trim();
+            }
           };
 
           if (existing) {
@@ -1780,20 +2892,25 @@ function handleBulkUpload(event) {
           } else {
             const uniq = new Set(state.rows.map(x => x.client.trim()));
             if (!uniq.has(client) && uniq.size >= 500) return;
-            if (state.rows.filter(x => x.client.toLowerCase() === client.toLowerCase()).length >= 8) return;
+            
             const newRow = {
               id: `row_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-              client, tower, region: region || '', baseFte: 10, assessment: 'Not Started',
-              pipelineFte: 0, decision: '', initiative: '', initiativeType: '',
-              estimatedFteBenefit: 0, implementationCost: 0, dollarSavings: 0, benchmark: 20, owner: 'None'
+              client, tower, region: region || '', baseFte: '', addressableFte: '', assessment: 'Not Started',
+              pipelineFte: '', decision: '', initiative: '', initiativeType: '',
+              estimatedFteBenefit: '', implementationCost: '', dollarSavings: '', benchmark: 20, owner: 'None', stack: '', actionPlan: '', clientActionPlan: ''
             };
             applyFields(newRow);
-            state.rows.push(newRow);
-            newRows++;
+            
+            const currentTowers = new Set(state.rows.filter(x => x.client.toLowerCase() === client.toLowerCase()).map(x => x.tower));
+            currentTowers.add(tower);
+            if (currentTowers.size <= 8) {
+              state.rows.push(newRow);
+              newRows++;
+            }
           }
 
           if (init && !state.assets.includes(init) && state.assets.length < 100) { state.assets.push(init); newAssets++; }
-          const type = String(r['Type'] || '').trim();
+          const type = String(normRow['type'] || '').trim();
           if (type && !state.initiativeTypes.includes(type) && state.initiativeTypes.length < 4) state.initiativeTypes.push(type);
         });
       }
@@ -1857,19 +2974,19 @@ function downloadBulkTemplate() {
 
     // Sheet 1: Master_Tracker
     const masterCols = ['Client Name', 'Region', 'Tower', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
-      'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit', 'Implementation Cost ($)', '$ Savings', 'Owner', 'Benchmark %'];
+      'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit', 'Realized FTE', 'Implementation Cost ($)', '$ Savings', 'Owner', 'Benchmark %'];
     const masterHints = [
       'Unique client name (max 500)', 'Region name from master list (e.g. APAC, EMEA, Americas)', 'Tower name from master list (max 8 per client)',
       'Whole number ≥ 0', 'Not Started / In Progress / Completed / No Scale',
       'Fill if In Progress or Completed', 'Select / Deployed / Potential but lack CBA / In progress / Awaiting client approvals / Not Applicable',
       'Asset name (creates asset column if new)', 'From initiative type master (max 4 types)',
-      'Fill if In Progress or Completed', 'USD number', 'USD number (negative allowed)', 'Owner name', 'Number 0-100'
+      'Fill if In Progress or Completed', 'Manually entered realized FTE (<= AI Potential FTE)', 'USD number', 'USD number (negative allowed)', 'Owner name', 'Number 0-100'
     ];
     const masterSamples = [
-      ['Client Alpha', 'APAC', 'PTP', 150, 'Completed', 30, 'Deployed', 'Invoice Automation', 'Agentic', 28, 75000, 120000, 'Jane Smith', 25],
-      ['Client Alpha', 'APAC', 'RTR', 80, 'In Progress', 15, 'In progress', 'GL Reconciliation Bot', 'RPA', 12, 40000, 60000, 'Jane Smith', 20],
-      ['Client Beta', 'EMEA', 'OTC', 200, 'Not Started', 0, 'Select', '', '', 0, 0, 0, 'None', 20],
-      ['Client Beta', 'Americas', 'FP&A', 100, 'No Scale', 0, 'Not Applicable', '', '', 0, 0, 0, 'None', 0],
+      ['Client Alpha', 'APAC', 'PTP', 150, 'Completed', 30, 'Deployed', 'Invoice Automation', 'Agentic', 28, 25, 75000, 120000, 'Jane Smith', 25],
+      ['Client Alpha', 'APAC', 'RTR', 80, 'In Progress', 15, 'In progress', 'GL Reconciliation Bot', 'RPA', 12, 10, 40000, 60000, 'Jane Smith', 20],
+      ['Client Beta', 'EMEA', 'OTC', 200, 'Not Started', 0, 'Select', '', '', 0, 0, 0, 0, 'None', 20],
+      ['Client Beta', 'Americas', 'FP&A', 100, 'No Scale', 0, 'Not Applicable', '', '', 0, 0, 0, 0, 'None', 0],
     ];
     const wsMaster = XLSX.utils.aoa_to_sheet([masterCols, masterHints, ...masterSamples]);
     wsMaster['!cols'] = masterCols.map(() => ({ wch: 22 }));
@@ -1938,19 +3055,27 @@ function downloadXls() {
   try {
     const wb = XLSX.utils.book_new();
     const masterData = [[
-      'Client Name', 'Region', 'Tower', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
-      'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit',
+      'Client Name', 'Region', 'Tower', 'Baseline FTE', 'Addressable FTE', 'Assessment Status', 'Agentic Potential FTE',
+      'Client Approval for AI', 'Proposed Asset', 'Type', 'Stack', 'Est. FTE Benefit', 'Realized FTE',
       'Implementation Cost ($)', '$ Savings', 'Remaining Potential', 'Owner',
-      'Actual Release %', 'Benchmark %', 'Variance %'
+      'AI Potential %', 'Benefit %', 'Benchmark %', 'Variance %', 'Action Plan'
     ]];
     state.rows.forEach(row => {
-      const rem = (row.pipelineFte || 0) - (row.estimatedFteBenefit || 0);
-      const act = row.baseFte > 0 ? (row.pipelineFte / row.baseFte) * 100 : 0;
+      const baseVal = row.baseFte === '' ? 0 : parseFloat(row.baseFte || 0);
+      const addrVal = getRowAddressableFte(row);
+      const pipeVal = row.pipelineFte === '' ? 0 : parseFloat(row.pipelineFte || 0);
+      const benVal = row.estimatedFteBenefit === '' ? 0 : parseFloat(row.estimatedFteBenefit || 0);
+
+      const rem = pipeVal - benVal;
+      const aiPotPct = addrVal > 0 ? (pipeVal / addrVal) * 100 : 0;
+      const benPct = pipeVal > 0 ? (benVal / pipeVal) * 100 : 0;
+      const variance = benPct - (row.benchmark || 0);
+
       masterData.push([
-        row.client, row.region || '', row.tower, row.baseFte, row.assessment, row.pipelineFte,
-        row.decision, row.initiative || '', row.initiativeType || '', row.estimatedFteBenefit || 0,
+        row.client, row.region || '', row.tower, row.baseFte, row.addressableFte, row.assessment, row.pipelineFte,
+        row.decision, row.initiative || '', row.initiativeType || '', row.stack || '', row.estimatedFteBenefit, row.realizedFte || '',
         row.implementationCost || 0, row.dollarSavings || 0, rem, row.owner || 'None',
-        `${act.toFixed(1)}%`, `${row.benchmark}%`, `${(act - row.benchmark).toFixed(1)}%`
+        `${aiPotPct.toFixed(1)}%`, `${benPct.toFixed(1)}%`, `${row.benchmark}%`, `${variance.toFixed(1)}%`, row.actionPlan || ''
       ]);
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(masterData), 'Master_Tracker');
@@ -1970,6 +3095,65 @@ function downloadXls() {
       assetData.push(arr);
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(assetData), 'Asset_Mapping');
+
+    // Sheet 3: Client_Summary
+    const clientCols = [
+      'Client Name', 'Client FTEs', 'Total Addressable FTE', 'Total AI Potential FTE',
+      'Total Est. FTE Benefit', 'Total Remaining Potential', 'Owner', 'Action Plan'
+    ];
+    const clientData = [clientCols];
+
+    const clientsMap = {};
+    state.rows.forEach(row => {
+      const client = (row.client || '').trim();
+      if (!client) return;
+      if (!clientsMap[client]) {
+        clientsMap[client] = [];
+      }
+      clientsMap[client].push(row);
+    });
+
+    const sortedClients = Object.keys(clientsMap).sort((a, b) => a.localeCompare(b));
+    sortedClients.forEach(client => {
+      const rows = clientsMap[client];
+
+      const towerMaxFte = {};
+      rows.forEach(r => {
+        const tower = (r.tower || '').trim();
+        const baseFte = parseFloat(r.baseFte || 0);
+        if (towerMaxFte[tower] === undefined || baseFte > towerMaxFte[tower]) {
+          towerMaxFte[tower] = baseFte;
+        }
+      });
+      const clientFtes = Object.values(towerMaxFte).reduce((sum, val) => sum + val, 0);
+
+      let totalAddressable = 0;
+      let totalAiPotential = 0;
+      let totalEstBenefit = 0;
+      let totalRemaining = 0;
+      rows.forEach(r => {
+        totalAddressable += getRowAddressableFte(r);
+        totalAiPotential += parseFloat(r.pipelineFte || 0);
+        totalEstBenefit += parseFloat(r.estimatedFteBenefit || 0);
+        totalRemaining += parseFloat(r.pipelineFte || 0) - parseFloat(r.estimatedFteBenefit || 0);
+      });
+
+      const ownersSet = new Set(rows.map(r => r.owner || 'None'));
+      const uniqueOwners = Array.from(ownersSet);
+      let clientOwner = 'None';
+      if (uniqueOwners.length === 1) {
+        clientOwner = uniqueOwners[0];
+      } else if (uniqueOwners.length > 1) {
+        clientOwner = 'Multiple';
+      }
+      const clientActionPlan = rows[0]?.clientActionPlan || '';
+
+      clientData.push([
+        client, clientFtes, totalAddressable, totalAiPotential,
+        totalEstBenefit, totalRemaining, clientOwner, clientActionPlan
+      ]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(clientData), 'Client_Summary');
 
     const dt = getFormattedDateTime();
     XLSX.writeFile(wb, `AI_Penetration_Report_${dt.dateTime}.xlsx`);
@@ -2016,3 +3200,383 @@ function downloadPpt() {
     alert('PPT export failed.');
   }
 }
+
+function renderClientSummary() {
+  const summaryHeaders = document.querySelectorAll('#clientSummaryTable thead th');
+  const summaryKeys = [
+    'client-name', 'client-ftes', 'total-addressable', 'total-ai-potential',
+    'total-est-benefit', 'total-remaining', 'owner', 'action-plan'
+  ];
+  summaryHeaders.forEach((th, idx) => {
+    if (summaryKeys[idx]) {
+      makeColumnResizable(th, 'summary-' + summaryKeys[idx]);
+    }
+  });
+
+  const tbody = document.getElementById('clientSummaryBody');
+  const tfoot = document.getElementById('clientSummaryTotals');
+  if (!tbody || !tfoot) return;
+
+  tbody.innerHTML = '';
+  tfoot.innerHTML = '';
+
+  // Group rows by client
+  const clientsMap = {};
+  state.rows.forEach(row => {
+    const client = (row.client || '').trim();
+    if (!client) return;
+    if (!clientsMap[client]) {
+      clientsMap[client] = [];
+    }
+    clientsMap[client].push(row);
+  });
+
+  const sortedClients = Object.keys(clientsMap).sort((a, b) => a.localeCompare(b));
+
+  let grandClientFte = 0;
+  let grandAddressable = 0;
+  let grandAiPotential = 0;
+  let grandEstBenefit = 0;
+  let grandRemaining = 0;
+
+  sortedClients.forEach(client => {
+    const rows = clientsMap[client];
+
+    // Client FTEs calculation: sum over unique towers of max(Base FTE)
+    const towerMaxFte = {};
+    rows.forEach(r => {
+      const tower = (r.tower || '').trim();
+      const baseFte = parseFloat(r.baseFte || 0);
+      if (towerMaxFte[tower] === undefined || baseFte > towerMaxFte[tower]) {
+        towerMaxFte[tower] = baseFte;
+      }
+    });
+    const clientFtes = Object.values(towerMaxFte).reduce((sum, val) => sum + val, 0);
+
+    // Sum other values
+    let totalAddressable = 0;
+    let totalAiPotential = 0;
+    let totalEstBenefit = 0;
+    let totalRemaining = 0;
+
+    rows.forEach(r => {
+      totalAddressable += getRowAddressableFte(r);
+      totalAiPotential += parseFloat(r.pipelineFte || 0);
+      totalEstBenefit += parseFloat(r.estimatedFteBenefit || 0);
+      totalRemaining += parseFloat(r.pipelineFte || 0) - parseFloat(r.estimatedFteBenefit || 0);
+    });
+
+    grandClientFte += clientFtes;
+    grandAddressable += totalAddressable;
+    grandAiPotential += totalAiPotential;
+    grandEstBenefit += totalEstBenefit;
+    grandRemaining += totalRemaining;
+
+    // Determine client owner
+    const ownersSet = new Set(rows.map(r => r.owner || 'None'));
+    const uniqueOwners = Array.from(ownersSet);
+    let clientOwner = 'None';
+    if (uniqueOwners.length === 1) {
+      clientOwner = uniqueOwners[0];
+    } else if (uniqueOwners.length > 1) {
+      clientOwner = 'Multiple';
+    }
+
+    const clientActionPlan = rows[0]?.clientActionPlan || '';
+
+    // Render Owner cell
+    let ownerCellContent = '';
+    if (editingClientOwner === client) {
+      let ownerOpts = `<option value="None" ${clientOwner === 'None' ? 'selected' : ''}>None</option>`;
+      if (clientOwner === 'Multiple') {
+        ownerOpts += `<option value="Multiple" disabled selected>-- Multiple --</option>`;
+      }
+      Object.keys(state.owners).forEach(n => {
+        ownerOpts += `<option value="${escHtml(n)}" ${clientOwner === n ? 'selected' : ''}>${escHtml(n)}</option>`;
+      });
+      ownerCellContent = `
+        <select onchange="handleClientOwnerChange('${escHtml(client)}', this.value)" style="width: 100px;">
+          ${ownerOpts}
+        </select>
+        <button class="owner-edit-btn" onclick="cancelClientOwnerEdit()" title="Cancel">✕</button>
+      `;
+    } else {
+      let emailAnchor = '';
+      if (clientOwner !== 'None' && clientOwner !== 'Multiple') {
+        const ownerEmail = state.owners[clientOwner] || '';
+        if (ownerEmail) {
+          const subj = encodeURIComponent(`AI Penetration Summary Update - ${client}`);
+          const body = encodeURIComponent(`Hi ${clientOwner},\n\nHere is the current AI Penetration summary for ${client}:\n\n- Client FTEs: ${clientFtes}\n- Total Addressable FTE: ${totalAddressable}\n- AI Potential FTE: ${totalAiPotential}\n- Est. FTE Benefit: ${totalEstBenefit}\n- Total Remaining Potential: ${totalRemaining}\n\nPlease review and let us know if there are any updates.\n\nRegards`);
+          emailAnchor = `<a href="mailto:${ownerEmail}?subject=${subj}&body=${body}" class="owner-email-icon-btn" title="Email ${clientOwner}">✉</a>`;
+        }
+      }
+      ownerCellContent = `
+        <span class="owner-name-text" style="font-size:9.5px;max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escHtml(clientOwner === 'Multiple' ? '-- Multiple --' : clientOwner)}</span>
+        ${emailAnchor}
+        <button class="owner-edit-btn" onclick="startClientOwnerEdit('${escHtml(client)}')" title="Edit Owner">✎</button>
+      `;
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${escHtml(client)}</strong></td>
+      <td class="col-num">${clientFtes}</td>
+      <td class="col-num">${totalAddressable}</td>
+      <td class="col-num">${totalAiPotential}</td>
+      <td class="col-num">${totalEstBenefit}</td>
+      <td class="col-num">${totalRemaining}</td>
+      <td>
+        <div class="owner-cell-container" style="display:flex;align-items:center;gap:4px;">
+          ${ownerCellContent}
+        </div>
+      </td>
+      <td>
+        <input type="text" value="${escHtml(clientActionPlan)}" style="width: 100%; box-sizing: border-box;"
+          onchange="handleClientActionPlanChange('${escHtml(client)}', this)" placeholder="Action plan">
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tfoot.innerHTML = `
+    <td>TOTAL</td>
+    <td class="col-num">${grandClientFte}</td>
+    <td class="col-num">${grandAddressable}</td>
+    <td class="col-num">${grandAiPotential}</td>
+    <td class="col-num">${grandEstBenefit}</td>
+    <td class="col-num">${grandRemaining}</td>
+    <td colspan="2"></td>
+  `;
+}
+
+// ==========================================
+// TECHNICAL REFERENCE & FUNCTIONS REGISTRY
+// ==========================================
+const FUNCTIONS_REGISTRY = [
+  { name: 'setupNavigation', line: 100, category: 'State Management & API Sync', desc: 'Sets up click listeners for the navigation tabs to toggle visibility and trigger view rendering.' },
+  { name: 'getApiUrl', line: 121, category: 'State Management & API Sync', desc: 'Utility to resolve host-relative REST API endpoints (handling file:// protocol local fallbacks).' },
+  { name: 'loadBackupsList', line: 128, category: 'State Management & API Sync', desc: 'Fetches list of available system backups from /api/backups and updates header load select dropdown.' },
+  { name: 'handleRestoreBackup', line: 147, category: 'State Management & API Sync', desc: 'Sends selected backup filename to /api/restore to overwrite current data state and reload client.' },
+  { name: 'handleResetState', line: 194, category: 'State Management & API Sync', desc: 'Erases all local configuration and data rows on server/client after user confirmation.' },
+  { name: 'loadData', line: 221, category: 'State Management & API Sync', desc: 'Fetches active state from /api/data and sets defaults for compatibility.' },
+  { name: 'saveData', line: 273, category: 'State Management & API Sync', desc: 'Sends current client data model as JSON to /api/data, creating timestamped server backup.' },
+  { name: 'pollServer', line: 300, category: 'State Management & API Sync', desc: 'Periodically polls the backups list from the server to refresh selection options.' },
+  { name: 'showStatus', line: 327, category: 'Helpers & Utilities', desc: 'Displays a brief visual status/toast message in the bottom-right corner.' },
+  { name: 'escHtml', line: 337, category: 'Helpers & Utilities', desc: 'Escapes HTML characters to prevent cross-site scripting (XSS).' },
+  { name: 'isAssessmentActive', line: 341, category: 'Helpers & Utilities', desc: 'Returns true if row assessment status is In Progress or Completed.' },
+  { name: 'getTowerBenchmark', line: 345, category: 'Helpers & Utilities', desc: 'Resolves process-specific baseline benchmarks (RTR: 40%, PTP/OTC: 60%, others: 20%).' },
+  { name: 'getDecisionColorClass', line: 354, category: 'Helpers & Utilities', desc: 'Resolves visual CSS color classes for Client Approval selections.' },
+  { name: 'getAssessmentColorClass', line: 363, category: 'Helpers & Utilities', desc: 'Resolves CSS classes mapping assessment status states to colors.' },
+  { name: 'getPctColorClass', line: 369, category: 'Helpers & Utilities', desc: 'Formats color classes (red/green) for percentage-based variances.' },
+  { name: 'getCellStatusClass', line: 378, category: 'Helpers & Utilities', desc: 'Resolves CSS classes for allocation matrix cells based on deployment status.' },
+  { name: 'getUniqueClientCount', line: 386, category: 'Helpers & Utilities', desc: 'Calculates the total number of unique client names configured in the system.' },
+  { name: 'getTowerCountForClient', line: 395, category: 'Helpers & Utilities', desc: 'Counts unique towers for a given client to enforce maximum client tower limits.' },
+  { name: 'savePrev', line: 404, category: 'Helpers & Utilities', desc: 'Stores current inputs in memory to support input restoration on validation failure.' },
+  { name: 'isDuplicateRow', line: 406, category: 'Helpers & Utilities', desc: 'Checks if Client + Tower + Region + Proposed Asset combination already exists.' },
+  { name: 'getFormattedDateTime', line: 410, category: 'Helpers & Utilities', desc: 'Generates formatted timestamp for file exports.' },
+  { name: 'downloadJsonState', line: 425, category: 'Helpers & Utilities', desc: 'Triggers local download of system JSON file.' },
+  { name: 'handleRegionChange', line: 437, category: 'Filter & Sort Logic', desc: 'Updates a row\'s Region and applies filters.' },
+  { name: 'updateFilterDropdowns', line: 449, category: 'Filter & Sort Logic', desc: 'Populates filter dropdown options dynamically based on matching dataset rows.' },
+  { name: 'getActiveFilters', line: 528, category: 'Filter & Sort Logic', desc: 'Returns active keys from current filter state selections.' },
+  { name: 'applyFilters', line: 541, category: 'Filter & Sort Logic', desc: 'Re-renders all dashboard tables and graphs based on user selection filters.' },
+  { name: 'clearFilters', line: 567, category: 'Filter & Sort Logic', desc: 'Resets all filter dropdown selectors to empty state.' },
+  { name: 'getFilteredRows', line: 590, category: 'Filter & Sort Logic', desc: 'Returns a filtered subset of rows matching all active filter selections.' },
+  { name: 'handleSort', line: 724, category: 'Filter & Sort Logic', desc: 'Sets/toggles sorting direction (ascending, descending, or none) for a column header.' },
+  { name: 'getSortedRows', line: 735, category: 'Filter & Sort Logic', desc: 'Applies sorting order to the filtered set of data rows.' },
+  { name: 'makeColumnResizable', line: 615, category: 'Addressable FTE & Validation Rules', desc: 'Attaches mouse dragging handlers to table headers to support manual column resizing.' },
+  { name: 'getRowAddressableFte', line: 658, category: 'Addressable FTE & Validation Rules', desc: 'Returns row addressable FTE, evaluating empty/blank inputs as 0.' },
+  { name: 'getClientTowerAddressable', line: 665, category: 'Addressable FTE & Validation Rules', desc: 'Sums addressable FTEs across all rows of a given Client + Tower combination.' },
+  { name: 'getMaxBaseFteForClientTower', line: 674, category: 'Addressable FTE & Validation Rules', desc: 'Finds the maximum Base FTE declared for a Client + Tower combination.' },
+  { name: 'validateClientTowerFteConstraint', line: 686, category: 'Addressable FTE & Validation Rules', desc: 'Checks that total addressable FTEs do not exceed maximum baseline FTEs for a client-tower.' },
+  { name: 'renderInputTableHeader', line: 769, category: 'Input Table Rendering & Headers', desc: 'Compiles and renders the table header row on the Input Dashboard, binding resizing handles.' },
+  { name: 'renderInputTable', line: 811, category: 'Input Table Rendering & Headers', desc: 'Compiles and renders the main data table, editing inputs, validation highlights, and footers.' },
+  { name: 'handleRowInputChange', line: 1079, category: 'Input Table Rendering & Headers', desc: 'Receives keyup events from inputs and forwards to validation handlers.' },
+  { name: 'validateRowUpdate', line: 1094, category: 'Input Table Rendering & Headers', desc: 'Checks inputs validations before saving rows to server.' },
+  { name: 'handleClientChange', line: 1124, category: 'Change Handlers (Inline Inputs)', desc: 'Validates and saves client name changes, checking maximum tower bounds.' },
+  { name: 'handleTowerChange', line: 1143, category: 'Change Handlers (Inline Inputs)', desc: 'Validates and saves tower changes, verifying maximum tower rules.' },
+  { name: 'handleBaseFteChange', line: 1163, category: 'Change Handlers (Inline Inputs)', desc: 'Processes Base FTE edits, enforcing Base >= Addressable and Base >= AI Potential.' },
+  { name: 'handleAddressableFteChange', line: 1203, category: 'Change Handlers (Inline Inputs)', desc: 'Validates Addressable FTE edits, enforcing Addressable <= Base and Addressable >= AI Potential.' },
+  { name: 'handlePipelineFteChange', line: 1245, category: 'Change Handlers (Inline Inputs)', desc: 'Validates AI Potential FTE edits, enforcing AI Potential <= Addressable, Realized, and Benefit.' },
+  { name: 'handleRealizedFteChange', line: 1281, category: 'Change Handlers (Inline Inputs)', desc: 'Enforces Realized FTE <= AI Potential FTE and updates state.' },
+  { name: 'handleFteBenefitChange', line: 1310, category: 'Change Handlers (Inline Inputs)', desc: 'Enforces Est. FTE Benefit <= AI Potential FTE, updates Benefit %, and syncs cell mapping.' },
+  { name: 'handleAssessmentChange', line: 1351, category: 'Change Handlers (Inline Inputs)', desc: 'Updates assessment status, disabling asset selections if Not Started/No Scale.' },
+  { name: 'updateRowField', line: 1358, category: 'Change Handlers (Inline Inputs)', desc: 'Generic helper to update a row field and submit changes.' },
+  { name: 'handleSavingsChange', line: 1365, category: 'Change Handlers (Inline Inputs)', desc: 'Updates row implementation cost and calculated savings.' },
+  { name: 'handleDecisionDropdownChange', line: 1381, category: 'Change Handlers (Inline Inputs)', desc: 'Updates client decision dropdown and changes corresponding color class styling.' },
+  { name: 'handleProposedAssetChange', line: 1401, category: 'Change Handlers (Inline Inputs)', desc: 'Updates the proposed asset field from dropdown selection.' },
+  { name: 'startOwnerEdit', line: 1445, category: 'Owner & Action Plan Editors', desc: 'Enables owner select dropdown inline on the Input page.' },
+  { name: 'cancelOwnerEdit', line: 1450, category: 'Owner & Action Plan Editors', desc: 'Cancels owner selection edit mode.' },
+  { name: 'handleOwnerDropdownChange', line: 1455, category: 'Owner & Action Plan Editors', desc: 'Saves owner changes and refreshes table.' },
+  { name: 'startClientOwnerEdit', line: 1465, category: 'Owner & Action Plan Editors', desc: 'Enables client owner select dropdown inline on the Client FTE Summary page.' },
+  { name: 'cancelClientOwnerEdit', line: 1470, category: 'Owner & Action Plan Editors', desc: 'Cancels client owner selection edit mode.' },
+  { name: 'handleClientOwnerChange', line: 1475, category: 'Owner & Action Plan Editors', desc: 'Applies owner changes across all rows of the client and updates database.' },
+  { name: 'handleRowActionPlanChange', line: 1484, category: 'Owner & Action Plan Editors', desc: 'Enforces 35-word limit and saves input page row Action Plan.' },
+  { name: 'handleClientActionPlanChange', line: 1498, category: 'Owner & Action Plan Editors', desc: 'Enforces 35-word limit and syncs Action Plan across all client rows.' },
+  { name: 'showInitiativeSuggestions', line: 1514, category: 'Autocomplete & Suggestions', desc: 'Displays autocomplete dropdown suggestion box for assets.' },
+  { name: 'filterInitiativeSuggestions', line: 1516, category: 'Autocomplete & Suggestions', desc: 'Filters suggestion options based on input text.' },
+  { name: 'selectInitiative', line: 1528, category: 'Autocomplete & Suggestions', desc: 'Populates suggested asset into cell input and closes suggestions.' },
+  { name: 'handleInitiativeInputChange', line: 1536, category: 'Autocomplete & Suggestions', desc: 'Processes keypresses inside autocomplete asset textbox.' },
+  { name: 'handleAddRow', line: 1592, category: 'Row Operations', desc: 'Appends a blank row to the data state and triggers save.' },
+  { name: 'handleDeleteRow', line: 1619, category: 'Row Operations', desc: 'Removes a row from the data state after user confirmation.' },
+  { name: 'renderAssetGrid', line: 1628, category: 'Asset Grid Matrix Popover', desc: 'Compiles and renders the N×M matrix mapping operational rows to assets.' },
+  { name: 'toggleHeaderRotation', line: 1718, category: 'Asset Grid Matrix Popover', desc: 'Toggles rotated header styles and shrinks matrix column widths.' },
+  { name: 'openCellPopover', line: 1725, category: 'Asset Grid Matrix Popover', desc: 'Displays allocation popover at cell coordinates for editing cell FTE/Status.' },
+  { name: 'selectPopoverStatus', line: 1741, category: 'Asset Grid Matrix Popover', desc: 'Sets selected status value inside popover.' },
+  { name: 'updatePopoverBadgeSelection', line: 1743, category: 'Asset Grid Matrix Popover', desc: 'Updates styling class of active popover status badges.' },
+  { name: 'closePopover', line: 1749, category: 'Asset Grid Matrix Popover', desc: 'Hides cell edit popover.' },
+  { name: 'handleSavePopover', line: 1754, category: 'Asset Grid Matrix Popover', desc: 'Validates cell FTE, updates cell allocation data, and saves state.' },
+  { name: 'destroyChart', line: 1785, category: 'Executive Insights & Charts', desc: 'Safely destroys past Chart.js instance to prevent canvas rendering conflicts.' },
+  { name: 'calcAssetPenetration', line: 1790, category: 'Executive Insights & Charts', desc: 'Calculates active AI asset penetration ratios across client towers.' },
+  { name: 'penColorClass', line: 1833, category: 'Executive Insights & Charts', desc: 'Resolves CSS styles for penetration percentages.' },
+  { name: 'renderPenetrationBand', line: 1840, category: 'Executive Insights & Charts', desc: 'Renders executive top-level banner summary color gradients.' },
+  { name: 'renderInsights', line: 1867, category: 'Executive Insights & Charts', desc: 'Compiles data summaries and renders all Chart.js instances and observations.' },
+  { name: 'renderTowerChart', line: 1975, category: 'Executive Insights & Charts', desc: 'Creates Bar chart representing Tower Pipeline vs Benchmark.' },
+  { name: 'renderApprovalChart', line: 2001, category: 'Executive Insights & Charts', desc: 'Creates Doughnut chart for Client Approval status distribution.' },
+  { name: 'renderHeatmapChart', line: 2047, category: 'Executive Insights & Charts', desc: 'Creates horizontal Bar chart of top client penetration ranks.' },
+  { name: 'renderPotentialChart', line: 2093, category: 'Executive Insights & Charts', desc: 'Creates Bar chart showing high opportunity targets awaiting approval.' },
+  { name: 'renderBillingTypeChart', line: 2156, category: 'Executive Insights & Charts', desc: 'Creates Radar chart comparing penetration by billing types.' },
+  { name: 'renderBenefitByAssetChart', line: 2203, category: 'Executive Insights & Charts', desc: 'Creates vertical Bar chart displaying FTE benefits by asset.' },
+  { name: 'renderInsightsList', line: 2273, category: 'Executive Insights & Charts', desc: 'Generates standard portfolio and custom-added user observations.' },
+  { name: 'editAutoInsight', line: 2367, category: 'Executive Insights & Charts', desc: 'Opens editing input for automated summary observations.' },
+  { name: 'cancelAutoInsightEdit', line: 2371, category: 'Executive Insights & Charts', desc: 'Discards edits to automated observations.' },
+  { name: 'saveAutoInsightEdit', line: 2375, category: 'Executive Insights & Charts', desc: 'Saves override text for automated insights.' },
+  { name: 'addCustomInsight', line: 2387, category: 'Executive Insights & Charts', desc: 'Opens input form to add custom portfolio observation.' },
+  { name: 'cancelAddInsight', line: 2393, category: 'Executive Insights & Charts', desc: 'Discards inputs and closes new observation form.' },
+  { name: 'saveNewInsight', line: 2399, category: 'Executive Insights & Charts', desc: 'Saves new custom observation to system state.' },
+  { name: 'deleteCustomInsight', line: 2410, category: 'Executive Insights & Charts', desc: 'Removes a custom observation from list.' },
+  { name: 'editCustomInsight', line: 2416, category: 'Executive Insights & Charts', desc: 'Opens edit box for custom observation.' },
+  { name: 'cancelCustomInsightEdit', line: 2420, category: 'Executive Insights & Charts', desc: 'Discards custom observation edits.' },
+  { name: 'saveCustomInsightEdit', line: 2424, category: 'Executive Insights & Charts', desc: 'Saves custom observation edits to state.' },
+  { name: 'openModal', line: 2437, category: 'Modal Editors', desc: 'Displays specified modal container and populates lists.' },
+  { name: 'populateClientModalList', line: 2448, category: 'Modal Editors', desc: 'Populates client list inside Client Master list modal.' },
+  { name: 'handleAddClient', line: 2460, category: 'Modal Editors', desc: 'Appends new client name to client master list.' },
+  { name: 'handleDeleteClient', line: 2475, category: 'Modal Editors', desc: 'Deletes client name from master, deleting matching rows.' },
+  { name: 'closeModal', line: 2492, category: 'Modal Editors', desc: 'Hides open modal dialog.' },
+  { name: 'populateRegionModalList', line: 2495, category: 'Modal Editors', desc: 'Populates list in Region Master modal.' },
+  { name: 'handleAddRegion', line: 2506, category: 'Modal Editors', desc: 'Appends region name to master.' },
+  { name: 'handleDeleteRegion', line: 2519, category: 'Modal Editors', desc: 'Deletes region from master.' },
+  { name: 'populateTowerModalList', line: 2532, category: 'Modal Editors', desc: 'Populates list in Tower Master modal.' },
+  { name: 'handleAddTower', line: 2543, category: 'Modal Editors', desc: 'Appends tower name to master.' },
+  { name: 'handleDeleteTower', line: 2561, category: 'Modal Editors', desc: 'Deletes tower from master, removing matching data.' },
+  { name: 'populateTypeModalList', line: 2584, category: 'Modal Editors', desc: 'Populates list in Initiative Type Master modal.' },
+  { name: 'handleAddType', line: 2596, category: 'Modal Editors', desc: 'Appends initiative type label to master.' },
+  { name: 'handleDeleteType', line: 2608, category: 'Modal Editors', desc: 'Deletes type label from master.' },
+  { name: 'populateAssetModalList', line: 2617, category: 'Modal Editors', desc: 'Populates columns list in Asset Columns modal.' },
+  { name: 'handleAddAsset', line: 2628, category: 'Modal Editors', desc: 'Appends new asset column name to master.' },
+  { name: 'handleDeleteAsset', line: 2641, category: 'Modal Editors', desc: 'Deletes asset column from master and cell data mapping.' },
+  { name: 'populateOwnerModalList', line: 2651, category: 'Modal Editors', desc: 'Populates directory list in Owner Directory modal.' },
+  { name: 'handleAddOwner', line: 2663, category: 'Modal Editors', desc: 'Appends new owner name and email to master.' },
+  { name: 'handleDeleteOwner', line: 2675, category: 'Modal Editors', desc: 'Deletes owner from master directory.' },
+  { name: 'normalizeKey', line: 2686, category: 'File Import & Export', desc: 'Normalizes spreadsheet header text to lowercase trimmed keys.' },
+  { name: 'handleBulkUpload', line: 2690, category: 'File Import & Export', desc: 'Reads and parses Excel/CSV files, running integrity checks and merging records.' },
+  { name: 'downloadBulkTemplate', line: 2966, category: 'File Import & Export', desc: 'Generates and downloads a pre-formatted Excel template for bulk upload.' },
+  { name: 'downloadXls', line: 3053, category: 'File Import & Export', desc: 'Generates styled workbook containing Master_Tracker, Asset_Mapping, and Client_Summary worksheets.' },
+  { name: 'downloadPpt', line: 3169, category: 'File Import & Export', desc: 'Creates and downloads executive presentation summarizing portfolio findings.' },
+  { name: 'renderClientSummary', line: 3203, category: 'Client Summary Tab Rendering', desc: 'Compiles and renders Client FTE Summary table with dynamic grouping and resizer handles.' },
+  { name: 'renderLeaderboard', line: 3480, category: 'AI Leaderboard Rendering', desc: 'Renders the Executive AI Leaderboard ranking clients dynamically as a clean horizontal bar chart with business icons.' }
+];
+
+window.renderLeaderboard = function() {
+  const container = document.getElementById('leadListSimplified');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  // 1. Group rows by client name
+  const clientsMap = {};
+  state.rows.forEach(row => {
+    const client = (row.client || '').trim();
+    if (!client) return;
+    if (!clientsMap[client]) {
+      clientsMap[client] = {
+        name: client,
+        addressableFte: 0,
+        pipelineFte: 0,
+        estimatedFteBenefit: 0,
+        realizedFte: 0,
+        rawTowers: []
+      };
+    }
+    const cObj = clientsMap[client];
+    cObj.addressableFte += getRowAddressableFte(row);
+    cObj.pipelineFte += parseFloat(row.pipelineFte || 0);
+    cObj.estimatedFteBenefit += parseFloat(row.estimatedFteBenefit || 0);
+    cObj.realizedFte += parseFloat(row.realizedFte || 0);
+    cObj.rawTowers.push(row);
+  });
+
+  const clientsList = Object.values(clientsMap);
+
+  if (clientsList.length === 0) {
+    container.innerHTML = `<div style="text-align: center; color: #999; padding: 30px; font-size: 11px;">🏢 No client data available. Please add clients and baseline FTEs on the Input dashboard.</div>`;
+    return;
+  }
+
+  // Calculate percentages
+  clientsList.forEach(cObj => {
+    const towerMaxFte = {};
+    cObj.rawTowers.forEach(r => {
+      const tower = (r.tower || '').trim();
+      const baseFte = parseFloat(r.baseFte || 0);
+      if (towerMaxFte[tower] === undefined || baseFte > towerMaxFte[tower]) {
+        towerMaxFte[tower] = baseFte;
+      }
+    });
+    cObj.clientFtes = Object.values(towerMaxFte).reduce((sum, val) => sum + val, 0);
+
+    cObj.potentialPct = cObj.addressableFte > 0 ? (cObj.pipelineFte / cObj.addressableFte) * 100 : 0;
+    cObj.realizationRate = cObj.estimatedFteBenefit > 0 ? (cObj.realizedFte / cObj.estimatedFteBenefit) * 100 : 0;
+  });
+
+  // 2. Sort clients by Mapped AI Potential % in descending order
+  clientsList.sort((a, b) => b.potentialPct - a.potentialPct);
+
+  // Helper to get rank badge or medal icon
+  function getRankBadgeHTML(idx) {
+    const rank = idx + 1;
+    if (rank === 1) return `<span style="font-size: 16px;" title="Gold Medal">🥇</span>`;
+    if (rank === 2) return `<span style="font-size: 16px;" title="Silver Medal">🥈</span>`;
+    if (rank === 3) return `<span style="font-size: 16px;" title="Bronze Medal">🥉</span>`;
+    return `<div class="rank-badge rank-default">${rank}</div>`;
+  }
+
+  // Find max value to compute fill width percentage relative to leader
+  const maxPotentialVal = Math.max(1, clientsList[0].potentialPct);
+
+  // 3. Render client rows
+  clientsList.forEach((c, idx) => {
+    const div = document.createElement('div');
+    div.className = 'leaderboard-row';
+    
+    const fillWidth = Math.min(100, Math.max(2, (c.potentialPct / maxPotentialVal) * 100));
+    
+    div.innerHTML = `
+      ${getRankBadgeHTML(idx)}
+      <div class="lead-client-name" title="${escHtml(c.name)}">${escHtml(c.name)}</div>
+      <div class="lead-progress-wrapper">
+        <div class="lead-progress-bar-container" title="Mapped Potential: ${c.potentialPct.toFixed(1)}%">
+          <div class="lead-progress-bar" style="width: ${fillWidth}%;"></div>
+        </div>
+      </div>
+      <div class="lead-value">${c.potentialPct.toFixed(1)}%</div>
+      
+      <!-- Inline Metrics with Business Icons -->
+      <div class="lead-metrics-inline">
+        <div class="lead-metric-item" title="Baseline headcount">
+          <span>👥</span>
+          <strong>${c.clientFtes} FTE</strong>
+        </div>
+        <div class="lead-metric-item" title="Estimated FTE benefits mapped">
+          <span>💡</span>
+          <strong>${c.estimatedFteBenefit.toFixed(1)} FTE</strong>
+        </div>
+        <div class="lead-metric-item" title="Realized benefits live in production">
+          <span>⚡</span>
+          <strong style="color: var(--status-deployed);">${c.realizedFte.toFixed(1)} FTE</strong>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+};
+

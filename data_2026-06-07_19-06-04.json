@@ -17,8 +17,7 @@
     "Agentic AR clearing"
   ],
   "owners": {
-    "Milind Sawai": "milind.sawai@accenture.com",
-    "ABC": "ABC@accenture.com"
+    "Milind Sawai": "milind.sawai@accenture.com"
   },
   "rows": [
     {
@@ -39,7 +38,7 @@
       "implementationCost": 0,
       "dollarSavings": 0,
       "benchmark": 60,
-      "owner": "ABC",
+      "owner": "Milind Sawai",
       "stack": ""
     },
     {
@@ -1026,7 +1025,7 @@
       "implementationCost": 0,
       "dollarSavings": 0,
       "benchmark": 60,
-      "owner": "ABC",
+      "owner": "None",
       "stack": ""
     },
     {
@@ -1299,7 +1298,7 @@
       "implementationCost": 0,
       "dollarSavings": 0,
       "benchmark": 60,
-      "owner": "Milind Sawai",
+      "owner": "None",
       "stack": ""
     },
     {
@@ -1309,18 +1308,18 @@
       "region": "EMEA",
       "billingType": "Fixed",
       "baseFte": 74,
-      "addressableFte": 15,
+      "addressableFte": "",
       "assessment": "In Progress",
-      "pipelineFte": 13,
+      "pipelineFte": 11,
       "decision": "",
       "initiative": "iVMD Agentic",
       "initiativeType": "Agentic",
-      "estimatedFteBenefit": 10,
+      "estimatedFteBenefit": 11,
       "realizedFte": 0,
       "implementationCost": 0,
       "dollarSavings": 0,
       "benchmark": 60,
-      "owner": "Milind Sawai",
+      "owner": "None",
       "stack": ""
     },
     {
@@ -1330,7 +1329,7 @@
       "region": "EMEA",
       "billingType": "Fixed",
       "baseFte": 74,
-      "addressableFte": 13,
+      "addressableFte": "",
       "assessment": "In Progress",
       "pipelineFte": 0,
       "decision": "",
@@ -1558,10 +1557,6 @@
     "row_1780829282180_5503::Agentic controller cockpit": {
       "fte": 4,
       "status": "In progress"
-    },
-    "row_1780829282220_1302::iVMD Agentic": {
-      "fte": 10,
-      "status": "Not Applicable"
     }
   },
   "towers": [

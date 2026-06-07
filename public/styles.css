@@ -44,18 +44,29 @@ body {
 }
 
 .wa-btn {
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 10px;
-  color: #fff;
-  font-size: 12px;
-  border-radius: 10px;
   text-decoration: none;
-  opacity: 0.9;
-  background-color: #2e7d32
+  opacity: 0.8;
+  vertical-align: middle;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.wa-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.wa-btn img {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .app-container {
@@ -247,6 +258,88 @@ body {
   height: 5px;
 }
 
+.login-page-body {
+  height: 100vh;
+  overflow: auto;
+  background:
+    linear-gradient(135deg, rgba(31, 73, 125, 0.96), rgba(79, 129, 189, 0.95)),
+    linear-gradient(180deg, #f5f7fa 0%, #edf3fb 100%);
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: min(420px, 100%);
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  padding: 28px;
+}
+
+.login-card__header .eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent-blue);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.login-card__header h1 {
+  margin-top: 8px;
+  color: var(--primary-navy);
+  font-size: 22px;
+}
+
+.login-copy,
+.login-hint {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.login-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-dark);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.login-form input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+.login-message {
+  min-height: 16px;
+  font-size: 11px;
+  color: #2e7d32;
+}
+
+.login-message.error {
+  color: #c62828;
+}
+
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
@@ -285,6 +378,9 @@ body {
   padding: 2px 4px;
   border: 1px solid var(--border-color);
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Alternating rows */
@@ -373,29 +469,75 @@ body {
   border: 1px solid #999 !important;
 }
 
+.status-deployed,
 .decision-select.status-deployed {
   background-color: var(--status-deployed) !important;
   color: var(--text-deployed) !important;
 }
 
+.status-potential,
 .decision-select.status-potential {
   background-color: var(--status-potential) !important;
   color: var(--text-potential) !important;
 }
 
+.status-inprogress,
 .decision-select.status-inprogress {
   background-color: var(--status-inprogress) !important;
   color: var(--text-inprogress) !important;
 }
 
+.status-awaiting,
 .decision-select.status-awaiting {
   background-color: var(--status-awaiting) !important;
   color: var(--text-awaiting) !important;
 }
 
+.status-na,
 .decision-select.status-na {
   background-color: var(--status-na) !important;
   color: #888888 !important;
+}
+
+.status-ideation,
+.decision-select.status-ideation {
+  background-color: #ffffff !important;
+  color: #333333 !important;
+}
+
+.decision-select option {
+  background-color: #ffffff !important;
+  color: var(--text-dark) !important;
+}
+
+.decision-select option.status-deployed {
+  background-color: var(--status-deployed) !important;
+  color: var(--text-deployed) !important;
+}
+
+.decision-select option.status-potential {
+  background-color: var(--status-potential) !important;
+  color: var(--text-potential) !important;
+}
+
+.decision-select option.status-inprogress {
+  background-color: var(--status-inprogress) !important;
+  color: var(--text-inprogress) !important;
+}
+
+.decision-select option.status-awaiting {
+  background-color: var(--status-awaiting) !important;
+  color: var(--text-awaiting) !important;
+}
+
+.decision-select option.status-na {
+  background-color: var(--status-na) !important;
+  color: #888888 !important;
+}
+
+.decision-select option.status-ideation {
+  background-color: #ffffff !important;
+  color: #333333 !important;
 }
 
 /* Column Styles & Formatting */
@@ -785,7 +927,6 @@ body {
 
 /* Outer layout: penetration band + kpi row + main row */
 .insights-tab-layout {
-  display: flex;
   flex-direction: column;
   gap: 5px;
   padding: 6px 6px 4px !important;
@@ -918,10 +1059,10 @@ body {
 .chart-grid-2x2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: repeat(3, 1fr);
   gap: 5px;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .chart-cell {
@@ -1343,4 +1484,285 @@ th.sort-active {
 
 .kpi-desc {
   font-size: 7.5px !important;
+}
+
+
+/* Assessment Status Background Colors */
+select.assessment-select.assessment-completed {
+  background-color: var(--status-deployed) !important;
+  color: var(--text-deployed) !important;
+}
+
+select.assessment-select.assessment-inprogress {
+  background-color: var(--status-inprogress) !important;
+  color: var(--text-inprogress) !important;
+}
+
+select.assessment-select {
+  font-weight: 600 !important;
+  border: 1px solid #999 !important;
+}
+
+/* Option styling inside assessment-select */
+select.assessment-select option.assessment-completed {
+  background-color: var(--status-deployed) !important;
+  color: var(--text-deployed) !important;
+}
+
+select.assessment-select option.assessment-inprogress {
+  background-color: var(--status-inprogress) !important;
+  color: var(--text-inprogress) !important;
+}
+
+/* Option styling inside decision-select */
+select.decision-select option.status-deployed {
+  background-color: var(--status-deployed) !important;
+  color: var(--text-deployed) !important;
+}
+
+select.decision-select option.status-potential {
+  background-color: var(--status-potential) !important;
+  color: var(--text-potential) !important;
+}
+
+select.decision-select option.status-inprogress {
+  background-color: var(--status-inprogress) !important;
+  color: var(--text-inprogress) !important;
+}
+
+select.decision-select option.status-awaiting {
+  background-color: var(--status-awaiting) !important;
+  color: var(--text-awaiting) !important;
+}
+
+select.decision-select option.status-na {
+  background-color: var(--status-na) !important;
+  color: #888888 !important;
+}
+
+select.decision-select option.status-ideation {
+  background-color: #ffffff !important;
+  color: #333333 !important;
+}
+
+/* Owner Name Text & Click-to-Email Icon Styling */
+.owner-name-text {
+  font-weight: 500;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+
+.owner-email-icon-btn {
+  text-decoration: none !important;
+  font-size: 13px !important;
+  color: var(--accent-blue) !important;
+  cursor: pointer;
+  margin-left: 4px;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.1s;
+}
+
+.owner-email-icon-btn:hover {
+  color: var(--primary-navy) !important;
+}
+
+.owner-edit-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 1px 3px;
+  font-size: 11px;
+  opacity: 0.6;
+  transition: opacity 0.1s, color 0.1s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.owner-edit-btn:hover {
+  opacity: 1;
+  color: var(--primary-navy);
+}
+
+/* FTE Summary by Client Width Restriction */
+#tab-client-summary .panel-header,
+#tab-client-summary .table-container {
+  width: 50%;
+  max-width: 960px;
+}
+
+/* Column Resize Handles */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 11;
+  user-select: none;
+}
+.resize-handle:hover {
+  background-color: var(--accent-blue);
+}
+th.resizing {
+  border-right: 2px solid var(--accent-blue) !important;
+}
+
+/* Rotated Column Headers for Asset Matrix */
+.rotated-header {
+  height: 120px !important;
+  vertical-align: bottom !important;
+  position: relative !important;
+  padding: 6px 2px !important;
+  min-width: 25px !important;
+  max-width: 25px !important;
+}
+
+.rotated-header-content {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  font-weight: 600;
+  font-size: 8.5px;
+}
+
+/* Reduce cell widths in asset grid when rotated */
+.grid-table:has(.rotated-header) .asset-cell {
+  min-width: 25px !important;
+  max-width: 25px !important;
+  font-size: 8.5px !important;
+  padding: 2px 1px !important;
+}
+
+/* Accenture-themed Blue for Asset Name Column Headers */
+.asset-header-th {
+  background-color: #0072c6 !important;
+  color: #ffffff !important;
+  border-color: #005fa3 !important;
+}
+
+/* AI Leaderboard Page styles */
+#tab-leaderboard {
+  background-color: var(--bg-light);
+  height: 100%;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.leaderboard-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+  background: #ffffff;
+}
+
+.rank-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.rank-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ffa500 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+}
+
+.rank-silver {
+  background: linear-gradient(135deg, #e0e0e0 0%, #b0b0b0 100%);
+  color: #333333;
+  box-shadow: 0 2px 4px rgba(176, 176, 176, 0.3);
+}
+
+.rank-bronze {
+  background: linear-gradient(135deg, #d2b48c 0%, #cd7f32 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(205, 127, 50, 0.3);
+}
+
+.rank-default {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.lead-client-name {
+  font-weight: 600;
+  font-size: 11px;
+  width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--primary-navy);
+}
+
+.lead-progress-wrapper {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lead-progress-bar-container {
+  flex-grow: 1;
+  background: #e9ecef;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.lead-progress-bar {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.6s ease;
+  background-color: #0072c6;
+}
+
+.lead-value {
+  font-weight: 700;
+  font-size: 11px;
+  width: 50px;
+  text-align: right;
+  color: var(--secondary-navy);
+}
+
+.lead-metrics-inline {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 9px;
+  color: var(--text-muted);
+  border-left: 1px solid #ddd;
+  padding-left: 10px;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.lead-metric-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
 }

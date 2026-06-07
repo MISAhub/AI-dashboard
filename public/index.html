@@ -28,9 +28,13 @@
       </div>
       <div class="header-right">
         <div class="sync-status" id="syncStatus">Connected &amp; Synced</div>
+        <select id="backupSelect" class="btn btn-secondary" style="font-size: 11px; padding: 2px 4px; height: 26px; border-color: #ccc; background-color: #fff; color: #333; cursor: pointer; outline: none; margin-right: 5px;">
+          <option value="">-- Load Saved State --</option>
+        </select>
         <button id="downloadXlsBtn" class="btn btn-secondary">Download XLS</button>
         <button id="downloadPptBtn" class="btn btn-secondary">Download PPT</button>
         <button id="saveBtn" class="btn btn-primary">Save to File</button>
+        <button id="resetBtn" class="btn btn-danger" onclick="handleResetState()" style="margin-left: 2px;">Reset</button>
       </div>
     </header>
 
@@ -38,7 +42,9 @@
     <nav class="app-nav">
       <button class="nav-tab active" data-tab="tab-input">Input Dashboard</button>
       <button class="nav-tab" data-tab="tab-assets">Asset Mapping Grid</button>
+      <button class="nav-tab" data-tab="tab-client-summary">Client FTE Summary</button>
       <button class="nav-tab" data-tab="tab-insights">Totals &amp; Insights</button>
+      <button class="nav-tab" data-tab="tab-leaderboard">AI Leaderboard</button>
     </nav>
 
     <main class="app-main">
@@ -49,6 +55,7 @@
           <h2>FTE Baseline &amp; Assessment Inputs</h2>
           <div class="panel-actions">
             <button class="btn btn-primary" onclick="handleAddRow()">+ Add Row</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-client')">&#128100; Clients</button>
             <button class="btn btn-secondary" onclick="openModal('modal-region')">&#127758; Regions</button>
             <button class="btn btn-secondary" onclick="openModal('modal-tower')">&#127968; Towers</button>
             <button class="btn btn-secondary" onclick="openModal('modal-type')">&#127381; Types</button>
@@ -62,6 +69,9 @@
         <!-- Filter Bar -->
         <div class="filter-bar" id="filterBarInput">
           <span class="filter-label">&#128269; Filter:</span>
+          <select id="filter-client" onchange="applyFilters()" title="Filter by Client Name">
+            <option value="">All Clients</option>
+          </select>
           <select id="filter-region" onchange="applyFilters()" title="Filter by Region">
             <option value="">All Regions</option>
           </select>
@@ -77,6 +87,12 @@
           </select>
           <select id="filter-initiative" onchange="applyFilters()" title="Filter by Asset">
             <option value="">Asset</option>
+          </select>
+          <select id="filter-type" onchange="applyFilters()" title="Filter by Type">
+            <option value="">All Types</option>
+          </select>
+          <select id="filter-status" onchange="applyFilters()" title="Filter by Status">
+            <option value="">All Statuses</option>
           </select>
           <button class="btn btn-sm btn-secondary" onclick="clearFilters()">&#10005; Clear</button>
           <span class="filter-count" id="filterCount"></span>
@@ -97,14 +113,20 @@
       <!-- TAB 2: ASSET MAPPING GRID -->
       <section id="tab-assets" class="tab-content">
         <div class="panel-header">
-          <div class="header-info">
+          <div class="header-info" style="display: flex; align-items: center; gap: 12px;">
             <h2>AI Asset Applicability &amp; Deployment Matrix</h2>
             <span class="info-tag">Assets: <strong id="assetCount">0</strong> / 100 max</span>
+            <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; cursor: pointer; color: var(--primary-navy); margin-left: 10px; user-select: none;">
+              <input type="checkbox" id="rotateHeadersCheckbox" onchange="toggleHeaderRotation(this.checked)"> Rotate Headers
+            </label>
           </div>
         </div>
         <!-- Filter Bar for Asset Grid -->
         <div class="filter-bar">
           <span class="filter-label">&#128269; Filter:</span>
+          <select id="filter-client-grid" onchange="applyFilters()" title="Filter by Client Name">
+            <option value="">All Clients</option>
+          </select>
           <select id="filter-region-grid" onchange="applyFilters()" title="Filter by Region">
             <option value="">All Regions</option>
           </select>
@@ -121,14 +143,21 @@
           <select id="filter-initiative-grid" onchange="applyFilters()" title="Filter by Asset">
             <option value="">Asset</option>
           </select>
+          <select id="filter-type-grid" onchange="applyFilters()" title="Filter by Type">
+            <option value="">All Types</option>
+          </select>
+          <select id="filter-status-grid" onchange="applyFilters()" title="Filter by Status">
+            <option value="">All Statuses</option>
+          </select>
           <button class="btn btn-sm btn-secondary" onclick="clearFilters()">&#10005; Clear</button>
         </div>
         <div class="legend-bar">
+          <div class="legend-item"><span class="legend-color legend-ideation" style="background-color: #FFF; border: 1px solid #b5b5b5;"></span> Ideation</div>
           <div class="legend-item"><span class="legend-color legend-deployed"></span> Deployed</div>
           <div class="legend-item"><span class="legend-color legend-potential"></span> Potential but lack CBA</div>
           <div class="legend-item"><span class="legend-color legend-inprogress"></span> In progress</div>
           <div class="legend-item"><span class="legend-color legend-awaiting"></span> Awaiting client approvals</div>
-          <div class="legend-item"><span class="legend-color legend-na"></span> Not Applicable</div>
+          <div class="legend-item"><span class="legend-color legend-na"></span> Dropped</div>
         </div>
         <div class="grid-container">
           <table class="grid-table" id="assetGridTable">
@@ -136,6 +165,33 @@
               <tr id="gridHeaderRow"></tr>
             </thead>
             <tbody id="gridBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- TAB 4: CLIENT FTE SUMMARY -->
+      <section id="tab-client-summary" class="tab-content">
+        <div class="panel-header">
+          <h2>FTE Summary by Client</h2>
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="clientSummaryTable">
+            <thead>
+              <tr>
+                <th>Client Name</th>
+                <th>Client FTEs</th>
+                <th>Total Addressable FTE</th>
+                <th>Total AI Potential FTE</th>
+                <th>Total Est. FTE Benefit</th>
+                <th>Total Remaining Potential</th>
+                <th>Owner</th>
+                <th>Action Plan</th>
+              </tr>
+            </thead>
+            <tbody id="clientSummaryBody"></tbody>
+            <tfoot>
+              <tr id="clientSummaryTotals"></tr>
+            </tfoot>
           </table>
         </div>
       </section>
@@ -156,7 +212,7 @@
             <span class="kpi-desc">Total F&amp;A FTEs</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-label">Agentic Potential</span>
+            <span class="kpi-label">AI Potential</span>
             <span class="kpi-value" id="kpiPipeline">0</span>
             <span class="kpi-desc">Target FTE Release</span>
           </div>
@@ -192,7 +248,7 @@
                 <canvas id="insightsChart"></canvas>
               </div>
               <div class="chart-cell">
-                <div class="chart-cell-title">&#127775; Client Approval Distribution</div>
+                <div class="chart-cell-title">&#127775; Status Distribution</div>
                 <canvas id="approvalChart"></canvas>
               </div>
               <div class="chart-cell">
@@ -202,6 +258,14 @@
               <div class="chart-cell">
                 <div class="chart-cell-title">&#127881; High Opportunity Targets (Potential &amp; Lack CBA)</div>
                 <canvas id="potentialChart"></canvas>
+              </div>
+              <div class="chart-cell">
+                <div class="chart-cell-title">&#128179; AI Penetration by Billing Type</div>
+                <canvas id="billingTypeChart"></canvas>
+              </div>
+              <div class="chart-cell">
+                <div class="chart-cell-title">&#128161; Est. FTE Benefit by Asset</div>
+                <canvas id="benefitByAssetChart"></canvas>
               </div>
             </div>
           </div>
@@ -232,10 +296,52 @@
 
       </section>
 
+      <!-- TAB 5: AI LEADERBOARD -->
+      <section id="tab-leaderboard" class="tab-content">
+        <div class="panel-header">
+          <h2>🏆 F&amp;A AI Penetration Leaderboard</h2>
+        </div>
+        <div class="leaderboard-wrapper" style="display: flex; flex-direction: column; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin: 0 auto; width: 60%; max-width: 800px; height: calc(100% - 20px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;">
+          <div style="text-align: center; border-bottom: 2px solid var(--accent-blue); padding-bottom: 10px; margin-bottom: 12px; flex-shrink: 0;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--primary-navy); display: flex; align-items: center; justify-content: center; gap: 6px;">
+              📊 Client Rankings &amp; Mapped Potential
+            </span>
+            <p style="font-size: 9px; color: var(--text-muted); margin: 4px 0 0 0;">Ranked by Mapped AI Potential % (Pipeline FTE vs. Addressable FTE)</p>
+          </div>
+          <div class="leaderboard-list" id="leadListSimplified" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
   <!-- ===== MODALS ===== -->
+
+  <!-- Client Master Modal -->
+  <div id="modal-client" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>&#128100; Client Master List</h3>
+        <button class="modal-close" onclick="closeModal('modal-client')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Client names appear in the Client Name column dropdown. Deleting a client clears all rows matching it.</p>
+        <div class="form-group">
+          <label>Add Client Name:</label>
+          <div class="input-btn-group">
+            <input type="text" id="newClientNameName" placeholder="e.g. DANONE, ACCOR, Ahold">
+            <button class="btn btn-primary" onclick="handleAddClient()">Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Client List:</label>
+          <div class="asset-list-scroll" id="modalClientList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Region Master Modal -->
   <div id="modal-region" class="modal">
@@ -377,7 +483,7 @@
         </div>
         <div class="color-badge status-awaiting" onclick="selectPopoverStatus('Awaiting client approvals')"
           title="Awaiting client approvals">A</div>
-        <div class="color-badge status-na" onclick="selectPopoverStatus('Not Applicable')" title="Not Applicable">N/A
+        <div class="color-badge status-na" onclick="selectPopoverStatus('Dropped')" title="Dropped">Dr
         </div>
       </div>
     </div>
