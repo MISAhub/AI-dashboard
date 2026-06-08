@@ -34,6 +34,7 @@ app.post('/api/login', (req, res) => {
 const defaultData = {
   clients: ["Client X", "Client Y", "Client Z"],
   towers: ["Tower 1", "Tower 2", "Tower 3", "Tower 4"],
+  processes: ["Invoicing", "GL Accounting", "Reporting"],
   assets: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"],
   rows: {
     "Client X::Tower 1": { baseFte: 10, assessment: "Completed", decision: "Approved", initiative: "AI Invoice Automation", pipelineFte: 5, benchmark: 25 },

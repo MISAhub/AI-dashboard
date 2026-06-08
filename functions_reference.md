@@ -1,6 +1,6 @@
 # App Functions & Calculation Logic Technical Reference
 
-This document provides a comprehensive technical reference of all JavaScript functions defined in `public/app.js` (accurate as of version v1.4.4), including their exact line references, purposes, and calculation formulas.
+This document provides a comprehensive technical reference of all JavaScript functions defined in `public/app.js` (accurate as of version v1.5.0), including their exact line references, purposes, and calculation formulas.
 
 ---
 
@@ -120,7 +120,8 @@ This document provides a comprehensive technical reference of all JavaScript fun
 | 1111 | `handleTowerChange(rowId, value)` | Validates and updates a row's tower. |
 | 1124 | `handleClientChange(rowId, val)` | Updates a row's client, validating max tower bounds. |
 | 1143 | `handleTowerChange(rowId, value)` | Enforces client tower thresholds. |
-| 1163 | `handleBaseFteChange(rowId, input)` | Handles edits to Base FTE, enforcing `Base >= Addressable` and `Base >= AI Potential`. |
+| 1178 | `handleProcessChange(rowId, value)` | Updates a row's process. |
+| 1187 | `handleBaseFteChange(rowId, input)` | Handles edits to Base FTE, enforcing `Base >= Addressable` and `Base >= AI Potential`. |
 | 1203 | `handleAddressableFteChange(rowId, input)` | Enforces `Addressable <= Base`, `Addressable >= AI Potential`, and sum threshold. |
 | 1245 | `handlePipelineFteChange(rowId, input)` | Enforces `AI Potential <= Addressable`, `AI Potential >= Realized`, and `AI Potential >= Est. Benefit`. |
 | 1281 | `handleRealizedFteChange(rowId, input)` | Enforces `Realized FTE <= AI Potential FTE`. |
@@ -197,7 +198,7 @@ This document provides a comprehensive technical reference of all JavaScript fun
 ### 12. Modal Editors
 | Line | Function | Description |
 |------|----------|-------------|
-| 2437 | `openModal(id)` | Opens configuration modals (Clients, Regions, Towers, Assets, Owners). |
+| 2437 | `openModal(id)` | Opens configuration modals (Clients, Regions, Towers, Processes, Assets, Owners). |
 | 2448 | `populateClientModalList()` | Renders active client list inside modal. |
 | 2460 | `handleAddClient()` | Adds a new client to master. |
 | 2475 | `handleDeleteClient(clientName)` | Deletes a client from master. |
@@ -208,7 +209,10 @@ This document provides a comprehensive technical reference of all JavaScript fun
 | 2532 | `populateTowerModalList()` | Renders towers. |
 | 2543 | `handleAddTower()` | Adds a tower. |
 | 2561 | `handleDeleteTower(towerName)` | Deletes a tower. |
-| 2584 | `populateTypeModalList()` | Renders types. |
+| 2631 | `populateProcessModalList()` | Renders processes list inside modal. |
+| 2642 | `handleAddProcess()` | Adds a new process to master. |
+| 2664 | `handleDeleteProcess(processName)` | Deletes a process from master. |
+| 2676 | `populateTypeModalList()` | Renders types. |
 | 2596 | `handleAddType()` | Adds an initiative type. |
 | 2608 | `handleDeleteType(typeName)` | Deletes a type. |
 | 2617 | `populateAssetModalList()` | Renders assets. |

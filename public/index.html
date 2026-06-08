@@ -58,6 +58,7 @@
             <button class="btn btn-secondary" onclick="openModal('modal-client')">&#128100; Clients</button>
             <button class="btn btn-secondary" onclick="openModal('modal-region')">&#127758; Regions</button>
             <button class="btn btn-secondary" onclick="openModal('modal-tower')">&#127968; Towers</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-process')">⚙️ Processes</button>
             <button class="btn btn-secondary" onclick="openModal('modal-type')">&#127381; Types</button>
             <button class="btn btn-secondary" onclick="openModal('modal-asset')">Assets</button>
             <button class="btn btn-secondary" onclick="openModal('modal-owner')">Owners</button>
@@ -77,6 +78,9 @@
           </select>
           <select id="filter-tower" onchange="applyFilters()" title="Filter by Tower">
             <option value="">All Towers</option>
+          </select>
+          <select id="filter-process" onchange="applyFilters()" title="Filter by Process">
+            <option value="">All Processes</option>
           </select>
           <select id="filter-assessment" onchange="applyFilters()" title="Filter by Assessment Status">
             <option value="">Assessment status</option>
@@ -132,6 +136,9 @@
           </select>
           <select id="filter-tower-grid" onchange="applyFilters()" title="Filter by Tower">
             <option value="">All Towers</option>
+          </select>
+          <select id="filter-process-grid" onchange="applyFilters()" title="Filter by Process">
+            <option value="">All Processes</option>
           </select>
           <select id="filter-assessment-grid" onchange="applyFilters()" title="Filter by Status">
             <option value="">Assessment status</option>
@@ -387,6 +394,30 @@
         <div class="form-group">
           <label>Tower List:</label>
           <div class="asset-list-scroll" id="modalTowerList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Process Master Modal -->
+  <div id="modal-process" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚙️ Process Master List</h3>
+        <button class="modal-close" onclick="closeModal('modal-process')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Deleting a process removes it from ALL rows.</p>
+        <div class="form-group">
+          <label>Add Process:</label>
+          <div class="input-btn-group">
+            <input type="text" id="newProcessNameName" placeholder="e.g. Accounts Payable, Billing, GL Reconciliation">
+            <button class="btn btn-primary" onclick="handleAddProcess()">Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Process List:</label>
+          <div class="asset-list-scroll" id="modalProcessList"></div>
         </div>
       </div>
     </div>

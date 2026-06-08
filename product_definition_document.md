@@ -1,7 +1,7 @@
 # Process & Product Definition Document (PDD)
 ## F&A AI Penetration & Assessment Portfolio Dashboard
 
-**Document Version**: v1.4.4  
+**Document Version**: v1.5.0  
 **Date**: June 2026  
 **Target Domain**: Finance & Accounting (F&A) Operations  
 **Author**: Antigravity Pair Programming AI  
@@ -217,7 +217,12 @@ sequenceDiagram
 
 ## 8. Log of Solved Issues & Version History
 
-### Version 1.4.4 (Current)
+### Version 1.5.0 (Current)
+* **Process Column & Master List**: Added a new "Process" column next to the "Tower" column on the Input dashboard and Asset Mapping Grid. Process values are manually selectable from a master dropdown list.
+* **Process Configuration Editor**: Integrated a "Processes" master list configuration modal button and editor, allowing dynamic additions and deletions.
+* **Filtering and Import/Export Compatibility**: Extended filter bar selections, Excel export templates, bulk upload data integrity parsers, and custom report sheet generators to support the new process field.
+
+### Version 1.4.4
 * **Tab Visibility Specificity Fix**: Removed explicit `display: flex;` from `.insights-tab-layout` in `public/styles.css` to allow the active/inactive tab toggles to correctly control the visibility of the Totals & Insights tab, preventing overlap with the AI Leaderboard page.
 
 ### Version 1.4.3

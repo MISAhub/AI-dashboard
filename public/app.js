@@ -29,7 +29,7 @@ let previousInputValues = {};
 let lastServerSyncStr = "";
 
 // Active filter state (shared across both tabs)
-let filterState = { client: '', region: '', tower: '', assessment: '', initiative: '', type: '', status: '' };
+let filterState = { client: '', region: '', tower: '', process: '', assessment: '', initiative: '', type: '', status: '' };
 
 // Sort state
 let sortState = { col: null, dir: null };
@@ -39,6 +39,7 @@ const SORTABLE_COLS = [
   { key: 'client', label: 'Client Name' },
   { key: 'region', label: 'Region' },
   { key: 'tower', label: 'Tower' },
+  { key: 'process', label: 'Process' },
   { key: 'baseFte', label: 'Baseline FTE' },
   { key: 'addressableFte', label: 'Addressable FTE' },
   { key: 'assessment', label: 'Assessment Status' },
@@ -231,6 +232,7 @@ async function loadData() {
     if (!state.cellData) state.cellData = {};
     if (!state.towers || state.towers.length === 0) state.towers = ['PTP', 'RTR', 'OTC', 'FP&A'];
     if (!state.regions || state.regions.length === 0) state.regions = ['APAC', 'EMEA', 'Americas'];
+    if (!state.processes || state.processes.length === 0) state.processes = ['Invoicing', 'GL Accounting', 'Reporting'];
     if (!state.initiativeTypes) state.initiativeTypes = [];
     if (!state.customInsights) state.customInsights = [];
 
@@ -244,6 +246,8 @@ async function loadData() {
       if (row.dollarSavings === undefined) row.dollarSavings = '';
       if (!row.owner) row.owner = 'None';
       if (!row.region) row.region = '';
+      if (!row.tower) row.tower = '';
+      if (!row.process) row.process = '';
       if (row.decision === 'Pending Review') row.decision = '';
       if (!row.initiativeType) row.initiativeType = '';
       if (!row.stack) row.stack = '';
@@ -452,6 +456,7 @@ function updateFilterDropdowns() {
     const cSel = document.getElementById(`filter-client${sfx}`);
     const rSel = document.getElementById(`filter-region${sfx}`);
     const tSel = document.getElementById(`filter-tower${sfx}`);
+    const pSel = document.getElementById(`filter-process${sfx}`);
     const iSel = document.getElementById(`filter-initiative${sfx}`);
     const typeSel = document.getElementById(`filter-type${sfx}`);
     const statusSel = document.getElementById(`filter-status${sfx}`);
@@ -487,6 +492,17 @@ function updateFilterDropdowns() {
         o.value = t; o.textContent = t;
         if (t === curT) o.selected = true;
         tSel.appendChild(o);
+      });
+    }
+
+    if (pSel) {
+      const curP = pSel.value;
+      pSel.innerHTML = '<option value="">All Processes</option>';
+      (state.processes || []).forEach(p => {
+        const o = document.createElement('option');
+        o.value = p; o.textContent = p;
+        if (p === curP) o.selected = true;
+        pSel.appendChild(o);
       });
     }
 
@@ -532,6 +548,7 @@ function getActiveFilters() {
     client: (document.getElementById(`filter-client${sfx}`) || {}).value || '',
     region: (document.getElementById(`filter-region${sfx}`) || {}).value || '',
     tower: (document.getElementById(`filter-tower${sfx}`) || {}).value || '',
+    process: (document.getElementById(`filter-process${sfx}`) || {}).value || '',
     assessment: (document.getElementById(`filter-assessment${sfx}`) || {}).value || '',
     initiative: (document.getElementById(`filter-initiative${sfx}`) || {}).value || '',
     type: (document.getElementById(`filter-type${sfx}`) || {}).value || '',
@@ -547,6 +564,7 @@ function applyFilters() {
     const cSel = document.getElementById(`filter-client${sfx}`);
     const rSel = document.getElementById(`filter-region${sfx}`);
     const tSel = document.getElementById(`filter-tower${sfx}`);
+    const pSel = document.getElementById(`filter-process${sfx}`);
     const aSel = document.getElementById(`filter-assessment${sfx}`);
     const iSel = document.getElementById(`filter-initiative${sfx}`);
     const typeSel = document.getElementById(`filter-type${sfx}`);
@@ -555,6 +573,7 @@ function applyFilters() {
     if (cSel) cSel.value = filterState.client;
     if (rSel) rSel.value = filterState.region;
     if (tSel) tSel.value = filterState.tower;
+    if (pSel) pSel.value = filterState.process;
     if (aSel) aSel.value = filterState.assessment;
     if (iSel) iSel.value = filterState.initiative;
     if (typeSel) typeSel.value = filterState.type;
@@ -566,11 +585,12 @@ function applyFilters() {
 }
 
 function clearFilters() {
-  filterState = { client: '', region: '', tower: '', assessment: '', initiative: '', type: '', status: '' };
+  filterState = { client: '', region: '', tower: '', process: '', assessment: '', initiative: '', type: '', status: '' };
   ['', '-grid'].forEach(sfx => {
     const cSel = document.getElementById(`filter-client${sfx}`);
     const rSel = document.getElementById(`filter-region${sfx}`);
     const tSel = document.getElementById(`filter-tower${sfx}`);
+    const pSel = document.getElementById(`filter-process${sfx}`);
     const aSel = document.getElementById(`filter-assessment${sfx}`);
     const iSel = document.getElementById(`filter-initiative${sfx}`);
     const typeSel = document.getElementById(`filter-type${sfx}`);
@@ -579,6 +599,7 @@ function clearFilters() {
     if (cSel) cSel.value = '';
     if (rSel) rSel.value = '';
     if (tSel) tSel.value = '';
+    if (pSel) pSel.value = '';
     if (aSel) aSel.value = '';
     if (iSel) iSel.value = '';
     if (typeSel) typeSel.value = '';
@@ -594,6 +615,7 @@ function getFilteredRows() {
     if (f.client && row.client !== f.client) return false;
     if (f.region && row.region !== f.region) return false;
     if (f.tower && row.tower !== f.tower) return false;
+    if (f.process && row.process !== f.process) return false;
     if (f.assessment && row.assessment !== f.assessment) return false;
     if (f.initiative && row.initiative !== f.initiative) return false;
     if (f.type && row.initiativeType !== f.type) return false;
@@ -772,7 +794,7 @@ function renderInputTableHeader() {
   tr.innerHTML = '';
 
   const sortableCols = new Set([
-    'client', 'region', 'tower', 'decision', 'initiative', 'estimatedFteBenefit', 'owner'
+    'client', 'region', 'tower', 'process', 'decision', 'initiative', 'estimatedFteBenefit', 'owner'
   ]);
 
   SORTABLE_COLS.forEach(col => {
@@ -874,6 +896,12 @@ function renderInputTable() {
         `<option value="${escHtml(t)}" ${row.tower === t ? 'selected' : ''}>${escHtml(t)}</option>`
       ).join('');
 
+    // Process dropdown options
+    const processOpts = `<option value="" ${!row.process ? 'selected' : ''}>-- Select Process --</option>` +
+      (state.processes || []).map(p =>
+        `<option value="${escHtml(p)}" ${row.process === p ? 'selected' : ''}>${escHtml(p)}</option>`
+      ).join('');
+
     // Client Approval options
     const decisionOpts = ['', 'Deployed', 'Potential but lack CBA', 'In progress', 'Awaiting client approvals', 'Dropped'].map(v =>
       `<option value="${v}" ${row.decision === v ? 'selected' : ''}>${v === '' ? 'Select' : v}</option>`
@@ -949,6 +977,11 @@ function renderInputTable() {
       <td>
         <select onchange="handleTowerChange('${rowId}', this.value)">
           ${towerOpts}
+        </select>
+      </td>
+      <td>
+        <select onchange="handleProcessChange('${rowId}', this.value)">
+          ${processOpts}
         </select>
       </td>
       <td>
@@ -1056,7 +1089,7 @@ function renderInputTable() {
   const totalVariance = totalBenefitPct - (countRows > 0 ? (sumBenchmark / countRows) / 100 : 0.20);
 
   tfoot.innerHTML = `
-    <td colspan="3">TOTAL PORTFOLIO</td>
+    <td colspan="4">TOTAL PORTFOLIO</td>
     <td class="col-num">${totalBaseline}</td>
     <td class="col-num">${totalAddressable}</td>
     <td></td>
@@ -1157,6 +1190,14 @@ function handleTowerChange(rowId, value) {
 
   row.tower = value;
   if (!row.benchmark) row.benchmark = getTowerBenchmark(value);
+  renderInputTable();
+  saveData();
+}
+
+function handleProcessChange(rowId, value) {
+  const row = state.rows.find(r => r.id === rowId);
+  if (!row) return;
+  row.process = value;
   renderInputTable();
   saveData();
 }
@@ -1596,6 +1637,7 @@ function handleAddRow() {
     client: '',
     region: '',
     tower: '',
+    process: '',
     baseFte: '',
     addressableFte: '',
     assessment: 'Not Started',
@@ -2441,6 +2483,7 @@ function openModal(id) {
   if (id === 'modal-asset') populateAssetModalList();
   if (id === 'modal-owner') populateOwnerModalList();
   if (id === 'modal-tower') populateTowerModalList();
+  if (id === 'modal-process') populateProcessModalList();
   if (id === 'modal-type') populateTypeModalList();
   if (id === 'modal-region') populateRegionModalList();
 }
@@ -2581,6 +2624,54 @@ function handleDeleteTower(towerName) {
   if (activeTab === 'tab-assets') renderAssetGrid();
 }
 
+// --- Process Master ---
+function populateProcessModalList() {
+  const c = document.getElementById('modalProcessList');
+  if (!state.processes) state.processes = [];
+  c.innerHTML = state.processes.length
+    ? state.processes.map(p => `
+      <div class="list-item">
+        <span><strong>${escHtml(p)}</strong></span>
+        <button class="list-item-btn" onclick="handleDeleteProcess('${escHtml(p)}')">&times;</button>
+      </div>`).join('')
+    : '<div class="list-item" style="color:#aaa;">No processes defined.</div>';
+}
+
+function handleAddProcess() {
+  const input = document.getElementById('newProcessNameName');
+  const raw = input.value.trim();
+  if (!raw) return;
+  if (raw.length > 50) { alert('Process name too long (max 50 chars).'); return; }
+  // Allow letters, spaces, ampersand, hyphens, and slashes
+  if (!/^[A-Za-z0-9& \-\/]+$/.test(raw)) {
+    alert('Process name can only contain alphanumeric characters, spaces, &, /, or -. No other special characters.');
+    return;
+  }
+  if (!state.processes) state.processes = [];
+  if (state.processes.map(p => p.toLowerCase()).includes(raw.toLowerCase())) {
+    alert('Process already exists.');
+    return;
+  }
+  state.processes.push(raw);
+  state.processes.sort((a, b) => a.localeCompare(b));
+  input.value = '';
+  populateProcessModalList();
+  updateFilterDropdowns();
+  saveData();
+}
+
+function handleDeleteProcess(processName) {
+  if (!confirm(`Delete process "${processName}"? It will be cleared from all rows.`)) return;
+  state.processes = (state.processes || []).filter(p => p !== processName);
+  // Clear from all rows
+  state.rows.forEach(row => { if (row.process === processName) row.process = ''; });
+  populateProcessModalList();
+  updateFilterDropdowns();
+  renderInputTable();
+  if (activeTab === 'tab-assets') renderAssetGrid();
+  saveData();
+}
+
 // --- Initiative Type Master ---
 function populateTypeModalList() {
   const c = document.getElementById('modalTypeList');
@@ -2713,6 +2804,7 @@ function handleBulkUpload(event) {
           const client = String(normRow['clientname'] || normRow['client'] || '').trim();
           const tower = String(normRow['tower'] || '').trim();
           const region = String(normRow['region'] || '').trim();
+          const process = String(normRow['process'] || '').trim();
           const init = String(normRow['proposedasset'] || normRow['proposedinitiative'] || normRow['asset'] || '').trim();
           if (!client || !tower) return;
 
@@ -2727,6 +2819,11 @@ function handleBulkUpload(event) {
             state.towers.push(tower);
           }
 
+          // Auto-add process to master if not present
+          if (process && !state.processes.map(p => p.toLowerCase()).includes(process.toLowerCase())) {
+            state.processes.push(process);
+          }
+
           // Auto-add region to master if not present
           if (region && !state.regions.map(reg => reg.toLowerCase()).includes(region.toLowerCase())) {
             state.regions.push(region);
@@ -2736,11 +2833,13 @@ function handleBulkUpload(event) {
             x.client.toLowerCase() === client.toLowerCase() &&
             x.tower.toLowerCase() === tower.toLowerCase() &&
             (x.region || '').toLowerCase() === region.toLowerCase() &&
+            (x.process || '').toLowerCase() === process.toLowerCase() &&
             (x.initiative || '').toLowerCase() === init.toLowerCase()
           );
 
           const applyFields = (target) => {
             if (normRow['region'] !== undefined) target.region = String(normRow['region']).trim();
+            if (normRow['process'] !== undefined) target.process = String(normRow['process']).trim();
             if (normRow['stack'] !== undefined) target.stack = String(normRow['stack']).trim();
             
             // Sequential parsing and validation
@@ -2895,7 +2994,7 @@ function handleBulkUpload(event) {
             
             const newRow = {
               id: `row_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-              client, tower, region: region || '', baseFte: '', addressableFte: '', assessment: 'Not Started',
+              client, tower, region: region || '', process: process || '', baseFte: '', addressableFte: '', assessment: 'Not Started',
               pipelineFte: '', decision: '', initiative: '', initiativeType: '',
               estimatedFteBenefit: '', implementationCost: '', dollarSavings: '', benchmark: 20, owner: 'None', stack: '', actionPlan: '', clientActionPlan: ''
             };
@@ -2921,7 +3020,7 @@ function handleBulkUpload(event) {
         const jsonData = XLSX.utils.sheet_to_json(wb.Sheets[assetSheet], { header: 1, defval: '' });
         if (jsonData.length > 1) {
           const headers = jsonData[0].map(h => String(h).trim());
-          const assetCols = headers.slice(4, headers.length - 1);
+          const assetCols = headers.slice(5, headers.length - 1);
           assetCols.forEach(col => {
             const clean = col.replace(/^Asset\s+/i, '').trim();
             if (clean && !['future state fte'].includes(clean.toLowerCase()) && !state.assets.includes(clean) && state.assets.length < 100) { state.assets.push(clean); newAssets++; }
@@ -2931,16 +3030,18 @@ function handleBulkUpload(event) {
             const rClient = String(rowArr[0] || '').trim();
             const rRegion = String(rowArr[1] || '').trim();
             const rTower = String(rowArr[2] || '').trim();
+            const rProcess = String(rowArr[3] || '').trim();
             if (!rClient || !rTower) continue;
             const matchRow = state.rows.find(r =>
               r.client.toLowerCase() === rClient.toLowerCase() &&
               r.tower.toLowerCase() === rTower.toLowerCase() &&
-              (r.region || '').toLowerCase() === rRegion.toLowerCase()
+              (r.region || '').toLowerCase() === rRegion.toLowerCase() &&
+              (r.process || '').toLowerCase() === rProcess.toLowerCase()
             );
             if (!matchRow) continue;
             assetCols.forEach((col, idx) => {
               const clean = col.replace(/^Asset\s+/i, '').trim();
-              const val = String(rowArr[4 + idx] || '').trim();
+              const val = String(rowArr[5 + idx] || '').trim();
               if (!val || !clean) return;
               const m = val.match(/^([\d.]+)\s*\((.+)\)$/);
               if (m) { state.cellData[`${matchRow.id}::${clean}`] = { fte: parseFloat(m[1]) || 0, status: m[2].trim() }; }
@@ -2973,20 +3074,20 @@ function downloadBulkTemplate() {
     const sampleStyle = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F2F2F2' } } };
 
     // Sheet 1: Master_Tracker
-    const masterCols = ['Client Name', 'Region', 'Tower', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
+    const masterCols = ['Client Name', 'Region', 'Tower', 'Process', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
       'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit', 'Realized FTE', 'Implementation Cost ($)', '$ Savings', 'Owner', 'Benchmark %'];
     const masterHints = [
       'Unique client name (max 500)', 'Region name from master list (e.g. APAC, EMEA, Americas)', 'Tower name from master list (max 8 per client)',
-      'Whole number ≥ 0', 'Not Started / In Progress / Completed / No Scale',
+      'Process name from master list (auto-added if new)', 'Whole number ≥ 0', 'Not Started / In Progress / Completed / No Scale',
       'Fill if In Progress or Completed', 'Select / Deployed / Potential but lack CBA / In progress / Awaiting client approvals / Not Applicable',
       'Asset name (creates asset column if new)', 'From initiative type master (max 4 types)',
       'Fill if In Progress or Completed', 'Manually entered realized FTE (<= AI Potential FTE)', 'USD number', 'USD number (negative allowed)', 'Owner name', 'Number 0-100'
     ];
     const masterSamples = [
-      ['Client Alpha', 'APAC', 'PTP', 150, 'Completed', 30, 'Deployed', 'Invoice Automation', 'Agentic', 28, 25, 75000, 120000, 'Jane Smith', 25],
-      ['Client Alpha', 'APAC', 'RTR', 80, 'In Progress', 15, 'In progress', 'GL Reconciliation Bot', 'RPA', 12, 10, 40000, 60000, 'Jane Smith', 20],
-      ['Client Beta', 'EMEA', 'OTC', 200, 'Not Started', 0, 'Select', '', '', 0, 0, 0, 0, 'None', 20],
-      ['Client Beta', 'Americas', 'FP&A', 100, 'No Scale', 0, 'Not Applicable', '', '', 0, 0, 0, 0, 'None', 0],
+      ['Client Alpha', 'APAC', 'PTP', 'Invoicing', 150, 'Completed', 30, 'Deployed', 'Invoice Automation', 'Agentic', 28, 25, 75000, 120000, 'Jane Smith', 25],
+      ['Client Alpha', 'APAC', 'RTR', 'GL Reconciliation', 80, 'In Progress', 15, 'In progress', 'GL Reconciliation Bot', 'RPA', 12, 10, 40000, 60000, 'Jane Smith', 20],
+      ['Client Beta', 'EMEA', 'OTC', 'Billing', 200, 'Not Started', 0, 'Select', '', '', 0, 0, 0, 0, 'None', 20],
+      ['Client Beta', 'Americas', 'FP&A', 'Reporting', 100, 'No Scale', 0, 'Not Applicable', '', '', 0, 0, 0, 0, 'None', 0],
     ];
     const wsMaster = XLSX.utils.aoa_to_sheet([masterCols, masterHints, ...masterSamples]);
     wsMaster['!cols'] = masterCols.map(() => ({ wch: 22 }));
@@ -3002,12 +3103,12 @@ function downloadBulkTemplate() {
 
     // Sheet 2: Asset_Mapping
     const assetNames = state.assets.length > 0 ? state.assets : ['Invoice Automation', 'GL Reconciliation Bot', 'AP Matching Engine'];
-    const assetHdrs = ['Client Name', 'Region', 'Tower', 'Base FTE', ...assetNames, 'Future State FTE'];
-    const assetHints = ['Same as Master_Tracker', 'Same as Master_Tracker', 'Same as Master_Tracker', 'Baseline FTE',
+    const assetHdrs = ['Client Name', 'Region', 'Tower', 'Process', 'Base FTE', ...assetNames, 'Future State FTE'];
+    const assetHints = ['Same as Master_Tracker', 'Same as Master_Tracker', 'Same as Master_Tracker', 'Same as Master_Tracker', 'Baseline FTE',
       ...assetNames.map(() => 'FTE count (status defaults to Deployed)'), 'Auto-calculated (leave blank)'];
     const assetSamples = [
-      ['Client Alpha', 'APAC', 'PTP', 150, ...assetNames.map((a, i) => i === 0 ? 28 : ''), ''],
-      ['Client Alpha', 'APAC', 'RTR', 80, ...assetNames.map((a, i) => i === 1 ? 12 : ''), ''],
+      ['Client Alpha', 'APAC', 'PTP', 'Invoicing', 150, ...assetNames.map((a, i) => i === 0 ? 28 : ''), ''],
+      ['Client Alpha', 'APAC', 'RTR', 'GL Reconciliation', 80, ...assetNames.map((a, i) => i === 1 ? 12 : ''), ''],
     ];
     const wsAsset = XLSX.utils.aoa_to_sheet([assetHdrs, assetHints, ...assetSamples]);
     wsAsset['!cols'] = assetHdrs.map(() => ({ wch: 22 }));
@@ -3028,6 +3129,7 @@ function downloadBulkTemplate() {
       ['4', 'Click "Save to File" to persist changes'], [''],
       ['FIELD RULES'],
       ['Tower', 'Must be a valid tower. New towers in file will be auto-added.'],
+      ['Process', 'Must be a valid process. New processes in file will be auto-added.'],
       ['Baseline FTE', 'Whole number ≥ 0. Must be ≥ Agentic Potential FTE.'],
       ['Assessment Status', 'Not Started | In Progress | Completed | No Scale'],
       ['Client Approval for AI', 'Select | Deployed | Potential but lack CBA | In progress | Awaiting client approvals | Not Applicable'],
@@ -3055,7 +3157,7 @@ function downloadXls() {
   try {
     const wb = XLSX.utils.book_new();
     const masterData = [[
-      'Client Name', 'Region', 'Tower', 'Baseline FTE', 'Addressable FTE', 'Assessment Status', 'Agentic Potential FTE',
+      'Client Name', 'Region', 'Tower', 'Process', 'Baseline FTE', 'Addressable FTE', 'Assessment Status', 'Agentic Potential FTE',
       'Client Approval for AI', 'Proposed Asset', 'Type', 'Stack', 'Est. FTE Benefit', 'Realized FTE',
       'Implementation Cost ($)', '$ Savings', 'Remaining Potential', 'Owner',
       'AI Potential %', 'Benefit %', 'Benchmark %', 'Variance %', 'Action Plan'
@@ -3072,7 +3174,7 @@ function downloadXls() {
       const variance = benPct - (row.benchmark || 0);
 
       masterData.push([
-        row.client, row.region || '', row.tower, row.baseFte, row.addressableFte, row.assessment, row.pipelineFte,
+        row.client, row.region || '', row.tower, row.process || '', row.baseFte, row.addressableFte, row.assessment, row.pipelineFte,
         row.decision, row.initiative || '', row.initiativeType || '', row.stack || '', row.estimatedFteBenefit, row.realizedFte || '',
         row.implementationCost || 0, row.dollarSavings || 0, rem, row.owner || 'None',
         `${aiPotPct.toFixed(1)}%`, `${benPct.toFixed(1)}%`, `${row.benchmark}%`, `${variance.toFixed(1)}%`, row.actionPlan || ''
@@ -3080,10 +3182,10 @@ function downloadXls() {
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(masterData), 'Master_Tracker');
 
-    const assetHdr = ['Client Name', 'Region', 'Tower', 'Base FTE', ...state.assets, 'Future State FTE'];
+    const assetHdr = ['Client Name', 'Region', 'Tower', 'Process', 'Base FTE', ...state.assets, 'Future State FTE'];
     const assetData = [assetHdr];
     state.rows.forEach(row => {
-      const arr = [row.client, row.region || '', row.tower, row.baseFte];
+      const arr = [row.client, row.region || '', row.tower, row.process || '', row.baseFte];
       let d = 0, p = 0, ip = 0;
       state.assets.forEach(a => {
         const cell = state.cellData[`${row.id}::${a}`] || { fte: '', status: 'Not Applicable' };
