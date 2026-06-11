@@ -1,7 +1,7 @@
 # Process & Product Definition Document (PDD)
 ## F&A AI Penetration & Assessment Portfolio Dashboard
 
-**Document Version**: v1.5.0  
+**Document Version**: v1.8.0  
 **Date**: June 2026  
 **Target Domain**: Finance & Accounting (F&A) Operations  
 **Author**: Antigravity Pair Programming AI  
@@ -192,18 +192,18 @@ sequenceDiagram
     participant Memory as Local Client State
     participant Server as Node Server
     participant FileSystem as data.json / Backups
-
+ 
     Note over User,Memory: Manual Interaction Mode
     User->>Memory: Edit field or toggle status
     Memory->>User: Re-render table and update colors (Local Only)
-
+ 
     Note over User,FileSystem: Manual Save Trigger
     User->>User: Click "Save to File" button
     User->>Server: HTTP POST /api/data (JSON state)
     Server->>FileSystem: Write active data.json
     Server->>FileSystem: Write data_YYYY-MM-DD_HH-MM-SS.json
     Server->>User: Return Success (trigger file download prompt)
-
+ 
     Note over User,FileSystem: Restore State Trigger
     User->>User: Select backup file from dropdown
     User->>Server: HTTP POST /api/restore { fileName }
@@ -217,7 +217,52 @@ sequenceDiagram
 
 ## 8. Log of Solved Issues & Version History
 
-### Version 1.5.0 (Current)
+### Version 1.8.0 (Current)
+* **Owner & Email Directory Auto-Update**: Enhanced bulk upload parser to handle "Owner Email" or "Owner Email id" adjacent to "Owner". The parser auto-registers new owners and emails into the master Owner Directory (avoiding duplicate names and email addresses case-insensitively). Row owner fields are dynamically updated to map directly to the registered owner name in the directory. Manual owner entries also feature case-insensitive name and email validation.
+
+### Version 1.7.8
+* **Bulk Upload State Sync**: Integrated dynamic cell allocation mapping synchronization inside `handleBulkUpload()`. Now, when new rows are imported or existing rows are updated via Excel, their proposed initiative, FTE benefit, and status values are automatically mapped to `state.cellData` allocations. This guarantees that imported data instantly and correctly populates the bubbles on the **4 Blocker** page and cell allocations on the **Asset Mapping** page..
+
+### Version 1.7.7
+* **Bulk Upload Template Simplification**: Removed the "Asset_Mapping" sheet from the template downloaded via `downloadBulkTemplate()` and updated the "Instructions" sheet steps to remove asset mapping references. The bulk template is now focused purely on adding inputs for the Input Dashboard, while all other pages (Asset Mapping grid, 4 blocker, etc.) derive their allocations and views dynamically from input page records as designed.
+
+### Version 1.7.6
+* **Status Column Placement**: Moved the "Status" column to be next to the "Stack" column (immediately following it) on the Input Dashboard page, aligning the table headers and cells.
+* **XLS Export Column Realignment**: Updated the Master_Tracker sheet structure in `downloadXls()` and the master template builder in `downloadBulkTemplate()` to match the new dashboard column ordering, including adding a "Stack" column to the template.
+
+### Version 1.7.5
+* **Popover Status Sync**: Resolved correct target row in the Client + Tower group when editing cell allocations in the Asset Mapping page. Now changes to asset status correctly update the selected value and color class of the "Status" column dropdown on the input page.
+* **Not Applicable Status Clearing**: Explicitly set the proposed row's status (`decision`) to empty and reset benefit to 0 when status is cleared to "Not Applicable" from the Asset Mapping page.
+
+### Version 1.7.4
+* **Column Renaming & Asset Mapping Grouping**: Renamed "Client Approval for AI" to "Status". Grouped Asset Mapping grid rows by Client + Tower combination using the maximum baseline FTE, and merged cell allocations.
+
+### Version 1.7.3
+* **4 Blocker Quadrant Alignment**: Swapped the Dropped quadrant with Awaiting client approvals. Updated calculations, counts, costs, and bubble rendering to target Awaiting client approvals solutions.
+
+### Version 1.7.2
+* **Column Renaming & Addressable Column Integration**: Renamed "Agentic Potential FTE" to "AI Potential FTE" across pages, exports, reports. Restored "Addressable FTE" column to bulk template.
+
+### Version 1.7.1
+* **Bulk Upload Template & Owner Validation**: Added columns for Billing Type, Owner, Action Plan to template. Auto-removes uploaded owner if not in master list.
+
+### Version 1.6.1
+* **Manually Adjustable Blocker Width**: Integrated horizontal resizer handles on the right edge of the 4 Blocker container to change its width dynamically on drag and persist widths in local storage.
+* **Centered Grid Layout**: Centered the 4 Blocker container horizontally on the page using margin rules.
+* **Container Query Responsiveness**: Implemented CSS Container Queries (`@container blocker`) on the blocker container to automatically scale bubble elements, watermarks, padding, and text labels depending on the blocker width.
+* **Implementation Cost Indicator**: Added implementation cost displays to each bubble, reading row-level cost metrics and formatting them as locale strings (e.g. `Cost: $15,000`).
+
+### Version 1.6.0
+* **4 Blocker Portfolio View**: Introduced a new "4 Blocker View" page rendering mapped AI assets dynamically in a 2x2 grid based on their deployment status.
+* **FTE Benefit Bubbles**: Solution deployments are represented as bubbles with background status legend colors, sizing, and text writing their estimated FTE benefit values.
+* **Auto Update Sync**: Connected tab rendering triggers to refresh dynamically based on database updates made in the Input Dashboard or Asset Matrix Grid.
+
+### Version 1.5.1
+* **Client FTE Summary Help Columns**: Added two new text input columns—"Help required" and "Help required from whom"—next to the "Action plan" column on the "Client FTE summary" page only. Inputs are limited to 35 words per cell and support manual column resizing.
+* **Expanded Summary Layout**: Set the table and panel headers in the Client FTE Summary tab to take up 75% width on screens with a width of 1080px or higher.
+* **XLS Exporter Updates**: Updated `downloadXls()` to include these new fields in the `Client_Summary` worksheet.
+
+### Version 1.5.0
 * **Process Column & Master List**: Added a new "Process" column next to the "Tower" column on the Input dashboard and Asset Mapping Grid. Process values are manually selectable from a master dropdown list.
 * **Process Configuration Editor**: Integrated a "Processes" master list configuration modal button and editor, allowing dynamic additions and deletions.
 * **Filtering and Import/Export Compatibility**: Extended filter bar selections, Excel export templates, bulk upload data integrity parsers, and custom report sheet generators to support the new process field.

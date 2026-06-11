@@ -45,6 +45,7 @@
       <button class="nav-tab" data-tab="tab-client-summary">Client FTE Summary</button>
       <button class="nav-tab" data-tab="tab-insights">Totals &amp; Insights</button>
       <button class="nav-tab" data-tab="tab-leaderboard">AI Leaderboard</button>
+      <button class="nav-tab" data-tab="tab-blocker">4 Blocker View</button>
     </nav>
 
     <main class="app-main">
@@ -59,6 +60,7 @@
             <button class="btn btn-secondary" onclick="openModal('modal-region')">&#127758; Regions</button>
             <button class="btn btn-secondary" onclick="openModal('modal-tower')">&#127968; Towers</button>
             <button class="btn btn-secondary" onclick="openModal('modal-process')">⚙️ Processes</button>
+            <button class="btn btn-secondary" onclick="openModal('modal-billing-type')">💳 Billing Types</button>
             <button class="btn btn-secondary" onclick="openModal('modal-type')">&#127381; Types</button>
             <button class="btn btn-secondary" onclick="openModal('modal-asset')">Assets</button>
             <button class="btn btn-secondary" onclick="openModal('modal-owner')">Owners</button>
@@ -159,7 +161,7 @@
           <button class="btn btn-sm btn-secondary" onclick="clearFilters()">&#10005; Clear</button>
         </div>
         <div class="legend-bar">
-          <div class="legend-item"><span class="legend-color legend-ideation" style="background-color: #FFF; border: 1px solid #b5b5b5;"></span> Ideation</div>
+          <div class="legend-item"><span class="legend-color legend-ideation"></span> Ideation</div>
           <div class="legend-item"><span class="legend-color legend-deployed"></span> Deployed</div>
           <div class="legend-item"><span class="legend-color legend-potential"></span> Potential but lack CBA</div>
           <div class="legend-item"><span class="legend-color legend-inprogress"></span> In progress</div>
@@ -193,6 +195,8 @@
                 <th>Total Remaining Potential</th>
                 <th>Owner</th>
                 <th>Action Plan</th>
+                <th>Help required</th>
+                <th>Help required from whom</th>
               </tr>
             </thead>
             <tbody id="clientSummaryBody"></tbody>
@@ -251,19 +255,20 @@
           <div class="charts-panel">
             <div class="chart-grid-2x2">
               <div class="chart-cell">
-                <div class="chart-cell-title">&#128202; Pipeline vs Benchmark by Tower</div>
+                <div class="chart-cell-title">&#128202; Est. FTE Benefit vs Realized by Tower</div>
                 <canvas id="insightsChart"></canvas>
               </div>
               <div class="chart-cell">
-                <div class="chart-cell-title">&#127775; Status Distribution</div>
+                <div class="chart-cell-title">&#127775; FTE Distribution basis AI project status</div>
                 <canvas id="approvalChart"></canvas>
               </div>
               <div class="chart-cell">
-                <div class="chart-cell-title">&#127919; Asset Penetration by Client (Top 10)</div>
-                <canvas id="heatmapChart"></canvas>
+                <div class="chart-cell-title">&#127919; AI asset penetration by Tower</div>
+                <div id="heatmapChart" style="height: 100%; min-height: 180px; display: flex; align-items: center; justify-content: center;"></div>
               </div>
               <div class="chart-cell">
-                <div class="chart-cell-title">&#127881; High Opportunity Targets (Potential &amp; Lack CBA)</div>
+                <div class="chart-cell-title">&#127881; Potential to Accelerate AI Penetration</div>
+                <div style="font-size: 8.5px; color: #666; margin-bottom: 6px; font-weight: 500; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Potential to accelerate by expediting client approvals and/or improving CBA">Potential to accelerate by expediting client approvals and/or improving CBA</div>
                 <canvas id="potentialChart"></canvas>
               </div>
               <div class="chart-cell">
@@ -317,6 +322,46 @@
           </div>
           <div class="leaderboard-list" id="leadListSimplified" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
             <!-- Dynamically populated -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: 4 BLOCKER VIEW -->
+      <section id="tab-blocker" class="tab-content blocker-tab-section" style="flex-direction: column;">
+        <div class="panel-header">
+          <h2>📋 AI Asset Status - 4 Blocker Portfolio View</h2>
+        </div>
+        <div class="blocker-insights-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="blocker-insights-title">
+              💡 Blocker Portfolio Insights
+            </span>
+            <button class="btn btn-sm btn-secondary" onclick="regenerateBlockerInsights()">🔄 Regenerate Insights</button>
+          </div>
+          <textarea id="blockerInsightsText" class="blocker-insights-textarea" placeholder="Write or generate blocker insights here..." oninput="handleBlockerInsightsInput(this.value)"></textarea>
+        </div>
+        <div class="blocker-wrapper">
+          <div class="blocker-container">
+            <div class="blocker-quadrant" id="quad-inprogress">
+              <div class="quadrant-summary" id="sum-inprogress"></div>
+              <div class="quadrant-watermark">Inprogress</div>
+              <div class="quadrant-content" id="bubbles-inprogress"></div>
+            </div>
+            <div class="blocker-quadrant" id="quad-deployed">
+              <div class="quadrant-summary" id="sum-deployed"></div>
+              <div class="quadrant-watermark">Deployed</div>
+              <div class="quadrant-content" id="bubbles-deployed"></div>
+            </div>
+            <div class="blocker-quadrant" id="quad-awaiting">
+              <div class="quadrant-summary" id="sum-awaiting"></div>
+              <div class="quadrant-watermark">Awaiting client approval</div>
+              <div class="quadrant-content" id="bubbles-awaiting"></div>
+            </div>
+            <div class="blocker-quadrant" id="quad-potential">
+              <div class="quadrant-summary" id="sum-potential"></div>
+              <div class="quadrant-watermark">Potential but lack CBA</div>
+              <div class="quadrant-content" id="bubbles-potential"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -423,6 +468,30 @@
     </div>
   </div>
 
+  <!-- Billing Type Master Modal -->
+  <div id="modal-billing-type" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>💳 Billing Type Master List</h3>
+        <button class="modal-close" onclick="closeModal('modal-billing-type')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-note">Deleting a billing type removes it from ALL rows.</p>
+        <div class="form-group">
+          <label>Add Billing Type:</label>
+          <div class="input-btn-group">
+            <input type="text" id="newBillingTypeName" placeholder="e.g. FTE, TBP, Fixed, Value">
+            <button class="btn btn-primary" onclick="handleAddBillingType()">Add</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Billing Type List:</label>
+          <div class="asset-list-scroll" id="modalBillingTypeList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Initiative Type Master Modal -->
   <div id="modal-type" class="modal">
     <div class="modal-content">
@@ -507,6 +576,7 @@
     <div class="form-group">
       <label>Legend Color:</label>
       <div class="color-badge-container">
+        <div class="color-badge status-ideation" onclick="selectPopoverStatus('Ideation')" title="Ideation" style="background-color: #ffffff; border: 1px solid #ccc; color: #333;">I</div>
         <div class="color-badge status-deployed" onclick="selectPopoverStatus('Deployed')" title="Deployed">D</div>
         <div class="color-badge status-potential" onclick="selectPopoverStatus('Potential but lack CBA')"
           title="Potential but lack CBA">P</div>

@@ -1,6 +1,6 @@
 # App Functions & Calculation Logic Technical Reference
 
-This document provides a comprehensive technical reference of all JavaScript functions defined in `public/app.js` (accurate as of version v1.5.0), including their exact line references, purposes, and calculation formulas.
+This document provides a comprehensive technical reference of all JavaScript functions defined in `public/app.js` (accurate as of version v1.6.1), including their exact line references, purposes, and calculation formulas.
 
 ---
 
@@ -143,6 +143,8 @@ This document provides a comprehensive technical reference of all JavaScript fun
 | 1475 | `handleClientOwnerChange(...)` | Synchronizes owner across all rows of the client. |
 | 1484 | `handleRowActionPlanChange(...)` | Enforces 35-word limit and saves row action plan. |
 | 1498 | `handleClientActionPlanChange(...)` | Enforces 35-word limit and syncs action plan across client rows. |
+| 1555 | `handleClientHelpRequiredChange(...)` | Enforces 35-word limit and syncs Help Required across all client rows. |
+| 1568 | `handleClientHelpRequiredFromWhomChange(...)` | Enforces 35-word limit and syncs Help Required From Whom across all client rows. |
 
 ### 8. Autocomplete & Suggestions
 | Line | Function | Description |
@@ -247,3 +249,9 @@ This document provides a comprehensive technical reference of all JavaScript fun
 | Line | Function | Description |
 |------|----------|-------------|
 | 3620 | `renderLeaderboard()` | Compiles client-wise metrics, sorts and ranks them, and populates the Mapped AI Potential %, Est. FTE Benefit, and Benefit Realization Rate % columns. |
+
+### 17. 4 Blocker Portfolio View Rendering
+| Line | Function | Description |
+|------|----------|-------------|
+| 3747 | `renderBlocker()` | Compiles and renders the 2x2 grid quadrant view of all mapped AI solutions, reflecting FTE benefits in status-colored bubbles. |
+| 3825 | `makeBlockerResizable()` | Attaches a drag handle to the right edge of the centered 4 blocker container to support manual width adjustment and local storage persistence. |

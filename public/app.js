@@ -40,17 +40,19 @@ const SORTABLE_COLS = [
   { key: 'region', label: 'Region' },
   { key: 'tower', label: 'Tower' },
   { key: 'process', label: 'Process' },
+  { key: 'billingType', label: 'Billing Type' },
   { key: 'baseFte', label: 'Baseline FTE' },
   { key: 'addressableFte', label: 'Addressable FTE' },
   { key: 'assessment', label: 'Assessment Status' },
-  { key: 'pipelineFte', label: 'Agentic Potential FTE' },
-  { key: 'decision', label: 'Client Approval for AI' },
+  { key: 'pipelineFte', label: 'AI Potential FTE' },
   { key: 'initiative', label: 'Proposed Asset' },
   { key: 'initiativeType', label: 'Type' },
   { key: 'stack', label: 'Stack' },
+  { key: 'decision', label: 'Status' },
+  { key: 'targetDate', label: 'Target Date' },
   { key: 'estimatedFteBenefit', label: 'Est. FTE Benefit' },
   { key: 'realizedFte', label: 'Realized FTE' },
-  { key: 'implementationCost', label: 'Impl. Cost ($)' },
+  { key: 'implementationCost', label: 'Implementation Cost' },
   { key: 'dollarSavings', label: '$ Savings' },
   { key: '_remaining', label: 'Remaining Pot.' },
   { key: 'owner', label: 'Owner' },
@@ -108,10 +110,11 @@ function setupNavigation() {
       activeTab = tab.dataset.tab;
       document.getElementById(activeTab).classList.add('active');
       closePopover();
-      if (activeTab === 'tab-insights') renderInsights();
+       if (activeTab === 'tab-insights') renderInsights();
       else if (activeTab === 'tab-assets') renderAssetGrid();
       else if (activeTab === 'tab-client-summary') renderClientSummary();
       else if (activeTab === 'tab-leaderboard') renderLeaderboard();
+      else if (activeTab === 'tab-blocker') renderBlocker();
       else renderInputTable();
     });
   });
@@ -172,15 +175,21 @@ async function handleRestoreBackup(fileName) {
       if (!state.regions || state.regions.length === 0) state.regions = ['APAC', 'EMEA', 'Americas'];
       if (!state.initiativeTypes) state.initiativeTypes = [];
       if (!state.customInsights) state.customInsights = [];
+      if (!state.billingTypes || state.billingTypes.length === 0) state.billingTypes = ['FTE', 'TBP', 'Fixed', 'Value'];
+      if (state.blockerInsights === undefined) state.blockerInsights = '';
+      if (state.blockerInsightsManuallyEdited === undefined) state.blockerInsightsManuallyEdited = false;
 
       localStorage.setItem('ai_penetration_state', JSON.stringify(state));
-      lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights });
+      lastServerSyncStr = JSON.stringify({ rows: state.rows, cellData: state.cellData, assets: state.assets, owners: state.owners, towers: state.towers, regions: state.regions, initiativeTypes: state.initiativeTypes, customInsights: state.customInsights, billingTypes: state.billingTypes });
       
       showStatus('Restored successfully', 'success');
       renderInputTable();
       if (activeTab === 'tab-assets') renderAssetGrid();
       else if (activeTab === 'tab-insights') renderInsights();
       else if (activeTab === 'tab-client-summary') renderClientSummary();
+      else if (activeTab === 'tab-leaderboard') renderLeaderboard();
+      else if (activeTab === 'tab-blocker') renderBlocker();
+      else renderInputTable();
       
       document.getElementById('backupSelect').value = '';
     } else {
@@ -205,6 +214,9 @@ async function handleResetState() {
   state.assets = [];
   state.initiativeTypes = [];
   state.customInsights = [];
+  state.billingTypes = ['FTE', 'TBP', 'Fixed', 'Value'];
+  state.blockerInsights = '';
+  state.blockerInsightsManuallyEdited = false;
   
   localStorage.setItem('ai_penetration_state', JSON.stringify(state));
   
@@ -215,6 +227,9 @@ async function handleResetState() {
   if (activeTab === 'tab-assets') renderAssetGrid();
   else if (activeTab === 'tab-insights') renderInsights();
   else if (activeTab === 'tab-client-summary') renderClientSummary();
+  else if (activeTab === 'tab-leaderboard') renderLeaderboard();
+  else if (activeTab === 'tab-blocker') renderBlocker();
+  else renderInputTable();
   
   const sel = document.getElementById('backupSelect');
   if (sel) sel.value = '';
@@ -235,6 +250,9 @@ async function loadData() {
     if (!state.processes || state.processes.length === 0) state.processes = ['Invoicing', 'GL Accounting', 'Reporting'];
     if (!state.initiativeTypes) state.initiativeTypes = [];
     if (!state.customInsights) state.customInsights = [];
+    if (!state.billingTypes || state.billingTypes.length === 0) state.billingTypes = ['FTE', 'TBP', 'Fixed', 'Value'];
+    if (state.blockerInsights === undefined) state.blockerInsights = '';
+    if (state.blockerInsightsManuallyEdited === undefined) state.blockerInsightsManuallyEdited = false;
 
     state.rows.forEach(row => {
       if (row.baseFte === undefined) row.baseFte = '';
@@ -248,11 +266,15 @@ async function loadData() {
       if (!row.region) row.region = '';
       if (!row.tower) row.tower = '';
       if (!row.process) row.process = '';
+      if (!row.billingType) row.billingType = 'FTE';
       if (row.decision === 'Pending Review') row.decision = '';
       if (!row.initiativeType) row.initiativeType = '';
       if (!row.stack) row.stack = '';
       if (row.actionPlan === undefined) row.actionPlan = '';
       if (row.clientActionPlan === undefined) row.clientActionPlan = '';
+      if (row.clientHelpRequired === undefined) row.clientHelpRequired = '';
+      if (row.clientHelpRequiredFromWhom === undefined) row.clientHelpRequiredFromWhom = '';
+      if (row.targetDate === undefined) row.targetDate = '';
       
       // Auto-add client name to master if missing
       if (row.client && !state.clients.includes(row.client)) {
@@ -321,6 +343,8 @@ async function pollServer() {
       if (activeTab === 'tab-insights') renderInsights();
       else if (activeTab === 'tab-assets') renderAssetGrid();
       else if (activeTab === 'tab-client-summary') renderClientSummary();
+      else if (activeTab === 'tab-leaderboard') renderLeaderboard();
+      else if (activeTab === 'tab-blocker') renderBlocker();
       else renderInputTable();
       showStatus('Connected & Synced', 'success');
     }
@@ -343,6 +367,15 @@ function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function formatCurrency(val) {
+  if (val === '' || val === undefined || val === null) return '';
+  const num = parseFloat(val);
+  if (isNaN(num)) return '';
+  const isNegative = num < 0;
+  const absNum = Math.abs(num);
+  return (isNegative ? '-' : '') + '$' + absNum.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
 function isAssessmentActive(a) {
   return a === 'In Progress' || a === 'Completed';
 }
@@ -362,7 +395,34 @@ function getDecisionColorClass(d) {
   if (d === 'In progress' || d === 'In Progress') return 'status-inprogress';
   if (d === 'Awaiting client approvals') return 'status-awaiting';
   if (d === 'Not Applicable' || d === 'Dropped') return 'status-na';
-  return 'status-ideation';
+  if (d === 'Ideation') return 'status-ideation';
+  return '';
+}
+
+function formatExcelDate(val) {
+  if (val === undefined || val === null || val === '') return '';
+  let dateObj = null;
+  if (val instanceof Date) {
+    dateObj = val;
+  } else if (typeof val === 'number') {
+    dateObj = new Date(Math.round((val - 25569) * 86400 * 1000));
+  } else if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (/^\d+(\.\d+)?$/.test(trimmed)) {
+      const num = parseFloat(trimmed);
+      dateObj = new Date(Math.round((num - 25569) * 86400 * 1000));
+    } else {
+      return trimmed;
+    }
+  }
+  if (dateObj && !isNaN(dateObj.getTime())) {
+    const day = String(dateObj.getUTCDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[dateObj.getUTCMonth()];
+    const year = String(dateObj.getUTCFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  }
+  return String(val).trim();
 }
 
 function getAssessmentColorClass(val) {
@@ -385,6 +445,7 @@ function getCellStatusClass(s) {
   if (s === 'Potential but lack CBA') return 'potential';
   if (s === 'In progress' || s === 'In Progress') return 'inprogress';
   if (s === 'Awaiting client approvals') return 'awaiting';
+  if (s === 'Ideation') return 'ideation';
   return 'na';
 }
 
@@ -794,7 +855,7 @@ function renderInputTableHeader() {
   tr.innerHTML = '';
 
   const sortableCols = new Set([
-    'client', 'region', 'tower', 'process', 'decision', 'initiative', 'estimatedFteBenefit', 'owner'
+    'client', 'region', 'tower', 'process', 'billingType', 'decision', 'initiative', 'estimatedFteBenefit', 'owner'
   ]);
 
   SORTABLE_COLS.forEach(col => {
@@ -902,9 +963,15 @@ function renderInputTable() {
         `<option value="${escHtml(p)}" ${row.process === p ? 'selected' : ''}>${escHtml(p)}</option>`
       ).join('');
 
+    // Billing Type dropdown options
+    const billingTypeOpts = `<option value="" ${!row.billingType ? 'selected' : ''}>-- Select Billing Type --</option>` +
+      (state.billingTypes || ['FTE', 'TBP', 'Fixed', 'Value']).map(bt =>
+        `<option value="${escHtml(bt)}" ${row.billingType === bt ? 'selected' : ''}>${escHtml(bt)}</option>`
+      ).join('');
+
     // Client Approval options
-    const decisionOpts = ['', 'Deployed', 'Potential but lack CBA', 'In progress', 'Awaiting client approvals', 'Dropped'].map(v =>
-      `<option value="${v}" ${row.decision === v ? 'selected' : ''}>${v === '' ? 'Select' : v}</option>`
+    const decisionOpts = ['', 'Ideation', 'Deployed', 'Potential but lack CBA', 'In progress', 'Awaiting client approvals', 'Dropped'].map(v =>
+      `<option value="${v}" class="${getDecisionColorClass(v)}" ${row.decision === v ? 'selected' : ''}>${v === '' ? 'Select' : v}</option>`
     ).join('');
 
     // Proposed Asset select options
@@ -985,6 +1052,11 @@ function renderInputTable() {
         </select>
       </td>
       <td>
+        <select onchange="updateRowField('${rowId}', 'billingType', this.value)">
+          ${billingTypeOpts}
+        </select>
+      </td>
+      <td>
         <input type="number" min="0" step="1" value="${row.baseFte}"
           onchange="handleBaseFteChange('${rowId}', this)" style="width:48px;">
       </td>
@@ -1005,12 +1077,6 @@ function renderInputTable() {
           onchange="handlePipelineFteChange('${rowId}', this)" style="width:50px;" ${dis}>
       </td>
       <td>
-        <select class="decision-select ${getDecisionColorClass(row.decision)}"
-          onchange="handleDecisionDropdownChange('${rowId}', this.value)" ${dis}>
-          ${decisionOpts}
-        </select>
-      </td>
-      <td>
         <select onchange="handleProposedAssetChange('${rowId}', this.value)" class="editable-cell-select" ${dis}>
           ${assetOpts}
         </select>
@@ -1025,6 +1091,16 @@ function renderInputTable() {
           onchange="updateRowField('${rowId}', 'stack', this.value.trim())" placeholder="Stack">
       </td>
       <td>
+        <select class="decision-select ${getDecisionColorClass(row.decision)}"
+          onchange="handleDecisionDropdownChange('${rowId}', this.value)" ${dis}>
+          ${decisionOpts}
+        </select>
+      </td>
+      <td>
+        <input type="text" value="${escHtml(row.targetDate || '')}" style="width:70px;" ${dis || (row.decision === 'Deployed' ? 'disabled' : '')}
+          onchange="updateRowField('${rowId}', 'targetDate', this.value.trim())" placeholder="dd-mm-yy">
+      </td>
+      <td>
         <input type="number" min="0" step="0.5" value="${row.estimatedFteBenefit}"
           onchange="handleFteBenefitChange('${rowId}', this.value)" style="width:55px;" ${dis}>
       </td>
@@ -1033,11 +1109,16 @@ function renderInputTable() {
           onchange="handleRealizedFteChange('${rowId}', this)" style="width:55px;" ${dis}>
       </td>
       <td>
-        <input type="number" min="0" value="${row.implementationCost}"
-          onchange="updateRowField('${rowId}', 'implementationCost', this.value===''?'':(parseFloat(this.value)||0))" style="width:70px;" ${dis}>
+        <input type="text" value="${formatCurrency(row.implementationCost)}"
+          onfocus="this.value = '${row.implementationCost}' === '' ? '' : '${row.implementationCost}'"
+          onblur="this.value = formatCurrency('${row.implementationCost}')"
+          onchange="let num = parseFloat(this.value.replace(/[^0-9.-]/g, '')); updateRowField('${rowId}', 'implementationCost', isNaN(num) ? '' : num)"
+          style="width:70px;" ${dis}>
       </td>
       <td>
-        <input type="number" value="${row.dollarSavings}" style="width:75px;${savCol}"
+        <input type="text" value="${formatCurrency(row.dollarSavings)}" style="width:75px;${savCol}"
+          onfocus="this.value = '${row.dollarSavings}' === '' ? '' : '${row.dollarSavings}'"
+          onblur="this.value = formatCurrency('${row.dollarSavings}')"
           onchange="handleSavingsChange('${rowId}', this)" ${dis}>
       </td>
       <td class="col-num" style="font-weight:600;">${remainingPotential}</td>
@@ -1089,15 +1170,15 @@ function renderInputTable() {
   const totalVariance = totalBenefitPct - (countRows > 0 ? (sumBenchmark / countRows) / 100 : 0.20);
 
   tfoot.innerHTML = `
-    <td colspan="4">TOTAL PORTFOLIO</td>
+    <td colspan="5">TOTAL PORTFOLIO</td>
     <td class="col-num">${totalBaseline}</td>
     <td class="col-num">${totalAddressable}</td>
     <td></td>
     <td class="col-num">${totalPipeline}</td>
-    <td colspan="5"></td>
+    <td colspan="6"></td>
     <td class="col-num">${totalRealized}</td>
-    <td class="col-num">${totalCost.toLocaleString()}</td>
-    <td class="col-num" style="${savCol}">${totalSavings.toLocaleString()}</td>
+    <td class="col-num">${formatCurrency(totalCost)}</td>
+    <td class="col-num" style="${savCol}">${formatCurrency(totalSavings)}</td>
     <td colspan="2"></td>
     <td class="col-num">${totalBaseline > 0 ? ((totalPipeline / totalBaseline) * 100).toFixed(1) : '0.0'}%</td>
     <td colspan="2"></td>
@@ -1226,7 +1307,7 @@ function handleBaseFteChange(rowId, input) {
   }
   
   if (row.pipelineFte !== '' && val < parseFloat(row.pipelineFte || 0)) {
-    alert(`Baseline FTE (${val}) cannot be less than Agentic Potential FTE (${row.pipelineFte}).`);
+    alert(`Baseline FTE (${val}) cannot be less than AI Potential FTE (${row.pipelineFte}).`);
     input.value = row.baseFte;
     return;
   }
@@ -1295,7 +1376,7 @@ function handlePipelineFteChange(rowId, input) {
     return;
   }
   let val = parseFloat(valStr) || 0;
-  if (val < 0) { alert('Agentic Potential FTE cannot be negative.'); input.value = row.pipelineFte || 0; return; }
+  if (val < 0) { alert('AI Potential FTE cannot be negative.'); input.value = row.pipelineFte || 0; return; }
   
   const addrVal = row.addressableFte === '' ? (row.baseFte === '' ? 0 : parseFloat(row.baseFte)) : parseFloat(row.addressableFte);
   if (val > addrVal) {
@@ -1407,16 +1488,16 @@ function updateRowField(rowId, field, value) {
 function handleSavingsChange(rowId, input) {
   const row = state.rows.find(r => r.id === rowId);
   if (!row) return;
-  const valStr = input.value.trim();
+  const valStr = input.value.replace(/[^0-9.-]/g, '').trim();
   if (valStr === '') {
     row.dollarSavings = '';
+    renderInputTable();
     saveData();
     return;
   }
   const val = parseFloat(valStr) || 0;
   row.dollarSavings = val;
-  input.style.color = val < 0 ? '#c62828' : val > 0 ? '#2e7d32' : '';
-  input.style.fontWeight = val !== 0 ? '700' : '';
+  renderInputTable();
   saveData();
 }
 
@@ -1550,6 +1631,32 @@ function handleClientActionPlanChange(client, input) {
   saveData();
 }
 
+function handleClientHelpRequiredChange(client, input) {
+  const val = input.value.trim();
+  const words = val.split(/\s+/).filter(w => w.length > 0);
+  const clientRows = state.rows.filter(r => r.client && r.client.trim().toLowerCase() === client.trim().toLowerCase());
+  if (words.length > 35) {
+    alert(`Help required exceeds the limit of 35 words (current: ${words.length} words).`);
+    input.value = clientRows[0]?.clientHelpRequired || '';
+    return;
+  }
+  clientRows.forEach(r => r.clientHelpRequired = val);
+  saveData();
+}
+
+function handleClientHelpRequiredFromWhomChange(client, input) {
+  const val = input.value.trim();
+  const words = val.split(/\s+/).filter(w => w.length > 0);
+  const clientRows = state.rows.filter(r => r.client && r.client.trim().toLowerCase() === client.trim().toLowerCase());
+  if (words.length > 35) {
+    alert(`Help required from whom exceeds the limit of 35 words (current: ${words.length} words).`);
+    input.value = clientRows[0]?.clientHelpRequiredFromWhom || '';
+    return;
+  }
+  clientRows.forEach(r => r.clientHelpRequiredFromWhom = val);
+  saveData();
+}
+
 // ==========================================
 // INITIATIVE AUTOCOMPLETE (Unused now, but kept for compatibility)
 // ==========================================
@@ -1638,11 +1745,13 @@ function handleAddRow() {
     region: '',
     tower: '',
     process: '',
+    billingType: 'FTE',
     baseFte: '',
     addressableFte: '',
     assessment: 'Not Started',
     pipelineFte: '',
     decision: '',
+    targetDate: '',
     initiative: '',
     initiativeType: '',
     estimatedFteBenefit: '',
@@ -1653,7 +1762,9 @@ function handleAddRow() {
     owner: 'None',
     stack: '',
     actionPlan: '',
-    clientActionPlan: ''
+    clientActionPlan: '',
+    clientHelpRequired: '',
+    clientHelpRequiredFromWhom: ''
   });
   renderInputTable();
   saveData();
@@ -1723,33 +1834,74 @@ function renderAssetGrid() {
   let filteredRows = getFilteredRows();
   filteredRows = filteredRows.filter(r => r.assessment !== 'Not Started' && r.assessment !== 'No Scale');
 
-  filteredRows.forEach(row => {
+  // Group rows by Client + Tower combination
+  const uniqueGroups = [];
+  const groupMap = new Map();
+  
+  filteredRows.forEach(r => {
+    const key = `${r.client.trim().toLowerCase()}|||${r.tower.trim().toLowerCase()}`;
+    if (!groupMap.has(key)) {
+      const group = {
+        client: r.client,
+        tower: r.tower,
+        region: r.region || '',
+        baseFte: parseFloat(r.baseFte || 0),
+        rows: [r]
+      };
+      groupMap.set(key, group);
+      uniqueGroups.push(group);
+    } else {
+      const group = groupMap.get(key);
+      group.rows.push(r);
+      const baseFteVal = parseFloat(r.baseFte || 0);
+      if (baseFteVal > group.baseFte) {
+        group.baseFte = baseFteVal;
+      }
+      if (r.region && !group.region.split(', ').includes(r.region)) {
+        group.region = group.region ? `${group.region}, ${r.region}` : r.region;
+      }
+    }
+  });
+
+  uniqueGroups.forEach(group => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${escHtml(row.client || '')}</strong></td>
-      <td>${escHtml(row.region || '')}</td>
-      <td><strong>${escHtml(row.tower || '')}</strong></td>
-      <td class="col-num">${row.baseFte || 0}</td>
+      <td><strong>${escHtml(group.client || '')}</strong></td>
+      <td>${escHtml(group.region || '')}</td>
+      <td><strong>${escHtml(group.tower || '')}</strong></td>
+      <td class="col-num">${group.baseFte || 0}</td>
     `;
 
     let deployed = 0, potential = 0, inprog = 0;
     state.assets.forEach(asset => {
-      const cellId = `${row.id}::${asset}`;
-      const cell = state.cellData[cellId] || { fte: '', status: 'Not Applicable' };
-      const fteVal = parseFloat(cell.fte || 0);
-      if (cell.status === 'Deployed') deployed += fteVal;
-      else if (cell.status === 'Potential but lack CBA') potential += fteVal;
-      else if (cell.status === 'In progress' || cell.status === 'In Progress') inprog += fteVal;
+      let totalFte = 0;
+      let cellStatus = 'Not Applicable';
+      let hasAllocation = false;
+      
+      group.rows.forEach(r => {
+        const cellId = `${r.id}::${asset}`;
+        const cell = state.cellData[cellId];
+        if (cell && cell.fte !== '' && cell.status !== 'Not Applicable') {
+          totalFte += parseFloat(cell.fte || 0);
+          cellStatus = cell.status;
+          hasAllocation = true;
+        }
+      });
+      
+      if (cellStatus === 'Deployed') deployed += totalFte;
+      else if (cellStatus === 'Potential but lack CBA') potential += totalFte;
+      else if (cellStatus === 'In progress' || cellStatus === 'In Progress') inprog += totalFte;
 
       const td = document.createElement('td');
-      td.className = `asset-cell status-${getCellStatusClass(cell.status)}`;
-      td.textContent = cell.fte !== '' && cell.status !== 'Not Applicable' ? cell.fte : '';
-      td.onclick = (e) => openCellPopover(e, row.id, asset);
+      td.className = `asset-cell status-${getCellStatusClass(cellStatus)}`;
+      td.textContent = hasAllocation && totalFte > 0 ? totalFte : '';
+      
+      const firstRow = group.rows[0];
+      td.onclick = (e) => openCellPopover(e, firstRow.id, asset);
       tr.appendChild(td);
     });
 
-    const baseVal = row.baseFte === '' ? 0 : parseFloat(row.baseFte || 0);
-    const future = baseVal - deployed - potential - inprog;
+    const future = group.baseFte - deployed - potential - inprog;
     const tdF = document.createElement('td');
     tdF.className = 'col-future-cell';
     tdF.textContent = future;
@@ -1768,8 +1920,23 @@ function toggleHeaderRotation(checked) {
 function openCellPopover(event, rowId, assetId) {
   event.stopPropagation();
   const popover = document.getElementById('cellPopover');
-  currentEditingCell = { rowId, assetId };
-  const cell = state.cellData[`${rowId}::${assetId}`] || { fte: '', status: 'Not Applicable' };
+  const clickedRow = state.rows.find(r => r.id === rowId);
+  if (!clickedRow) return;
+  const groupRows = state.rows.filter(r => 
+    r.client.toLowerCase() === clickedRow.client.toLowerCase() && 
+    r.tower.toLowerCase() === clickedRow.tower.toLowerCase() &&
+    r.assessment !== 'Not Started' && r.assessment !== 'No Scale'
+  );
+  let targetRow = groupRows.find(r => r.initiative === assetId);
+  if (!targetRow) {
+    const allGroupRows = state.rows.filter(r => 
+      r.client.toLowerCase() === clickedRow.client.toLowerCase() && 
+      r.tower.toLowerCase() === clickedRow.tower.toLowerCase()
+    );
+    targetRow = allGroupRows.find(r => r.initiative === assetId) || clickedRow;
+  }
+  currentEditingCell = { rowId: targetRow.id, assetId };
+  const cell = state.cellData[`${targetRow.id}::${assetId}`] || { fte: '', status: 'Not Applicable' };
   selectedPopoverStatus = cell.status;
   document.getElementById('popoverFte').value = cell.fte;
   document.getElementById('popoverTitle').textContent = `${assetId} Allocation`;
@@ -1807,9 +1974,21 @@ function handleSavePopover() {
   }
 
   const row = state.rows.find(r => r.id === rowId);
-  if (row && row.initiative === assetId) {
-    row.estimatedFteBenefit = selectedPopoverStatus === 'Not Applicable' ? 0 : fteNum;
-    if (selectedPopoverStatus && selectedPopoverStatus !== 'Not Applicable') row.decision = selectedPopoverStatus;
+  if (row) {
+    state.rows.forEach(r => {
+      if (r.id !== row.id && r.client.toLowerCase() === row.client.toLowerCase() && r.tower.toLowerCase() === row.tower.toLowerCase()) {
+        delete state.cellData[`${r.id}::${assetId}`];
+      }
+    });
+
+    if (row.initiative === assetId) {
+      row.estimatedFteBenefit = selectedPopoverStatus === 'Not Applicable' ? 0 : fteNum;
+      if (selectedPopoverStatus === 'Not Applicable') {
+        row.decision = '';
+      } else {
+        row.decision = selectedPopoverStatus;
+      }
+    }
   }
 
   closePopover();
@@ -1915,7 +2094,15 @@ function renderInsights() {
 
   state.rows.forEach(row => {
     const t = row.tower;
-    if (!towerStats[t]) towerStats[t] = { base: 0, pipe: 0, benchmark: getTowerBenchmark(t) };
+    if (!towerStats[t]) {
+      towerStats[t] = {
+        base: 0,
+        pipe: 0,
+        benchmark: getTowerBenchmark(t),
+        estBenefit: 0,
+        realized: 0
+      };
+    }
     totalBaseline += parseFloat(row.baseFte || 0);
     totalPipeline += parseFloat(row.pipelineFte || 0);
     totalRows++;
@@ -1923,6 +2110,14 @@ function renderInsights() {
     if (row.decision === 'Deployed' || row.decision === 'In progress') approvedCount++;
     towerStats[t].base += parseFloat(row.baseFte || 0);
     towerStats[t].pipe += parseFloat(row.pipelineFte || 0);
+
+    const est = parseFloat(row.estimatedFteBenefit);
+    const estVal = isNaN(est) || est < 0 ? 0 : est;
+    towerStats[t].estBenefit += estVal;
+
+    const real = parseFloat(row.realizedFte);
+    const realVal = isNaN(real) || real < 0 ? 0 : real;
+    towerStats[t].realized += realVal;
   });
 
   const pen = calcAssetPenetration();
@@ -1960,6 +2155,52 @@ const valueLabelPlugin = {
       const meta = chart.getDatasetMeta(datasetIndex);
       if (meta && meta.data) {
         meta.data.forEach((element, index) => {
+          // Special logic for combined label on heatmap chart
+          if (chart.canvas && chart.canvas.id === 'heatmapChart') {
+            if (datasetIndex !== 0) return; // Only run once per slice
+
+            const meta0 = chart.getDatasetMeta(0);
+            const meta1 = chart.getDatasetMeta(1);
+            if (!meta0 || !meta0.data[index]) return;
+
+            const val0 = parseFloat(chart.data.datasets[0].data[index]) || 0;
+            const val1 = parseFloat(chart.data.datasets[1].data[index]) || 0;
+            const totalVal = val0 + val1;
+            if (totalVal <= 0) return;
+
+            const el0 = meta0.data[index];
+            const el1 = meta1 ? meta1.data[index] : null;
+
+            let xPos = el0.x;
+            let yPos = el0.y;
+            if (el1 && el1.x > el0.x) {
+              xPos = el1.x;
+              yPos = el1.y;
+            }
+
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 8.5px Outfit';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(totalVal.toFixed(1) + '%', xPos + 3, yPos);
+            return;
+          }
+
+          // Special logic for potential chart (value inside the bar center)
+          if (chart.canvas && chart.canvas.id === 'potentialChart') {
+            const dataVal = dataset.data[index];
+            if (dataVal === undefined || dataVal === null || dataVal === 0 || dataVal === "0" || dataVal === "0.0") return;
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 9px Outfit';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const base = (typeof element.base === 'number') ? element.base : chart.chartArea.left;
+            const barCenter = (base + element.x) / 2;
+            const label = parseFloat(parseFloat(dataVal).toFixed(1)).toString();
+            ctx.fillText(label, barCenter, element.y);
+            return;
+          }
+
           const dataVal = dataset.data[index];
           if (dataVal === undefined || dataVal === null || dataVal === 0 || dataVal === "0" || dataVal === "0.0") return;
 
@@ -1969,12 +2210,13 @@ const valueLabelPlugin = {
           let label = dataVal.toString();
 
           // Check if chart displays percentages
-          const isTowerChart = chart.canvas && chart.canvas.id === 'insightsChart';
           const isBillingChart = chart.canvas && chart.canvas.id === 'billingTypeChart';
           const isHeatmapChart = chart.canvas && chart.canvas.id === 'heatmapChart';
 
-          if (isTowerChart || isBillingChart || isHeatmapChart) {
+          if (isBillingChart || isHeatmapChart) {
             label = parseFloat(dataVal).toFixed(1) + '%';
+          } else if (chart.canvas && chart.canvas.id === 'insightsChart') {
+            label = parseFloat(parseFloat(dataVal).toFixed(1)).toString();
           }
 
           let x = element.x;
@@ -1995,7 +2237,13 @@ const valueLabelPlugin = {
             // Put the label in the center of the arc slice
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#fff'; // White text on doughnut slices
+            const isApprovalChart = chart.canvas && chart.canvas.id === 'approvalChart';
+            const sliceBgColor = dataset.backgroundColor[index];
+            if (isApprovalChart && (sliceBgColor === 'rgba(255,255,255,1.0)' || sliceBgColor === '#ffffff' || sliceBgColor === 'rgba(255, 255, 255, 1.0)')) {
+              ctx.fillStyle = '#333';
+            } else {
+              ctx.fillStyle = '#fff';
+            }
             ctx.font = 'bold 9px Outfit';
             ctx.fillText(label, x, y);
           } else if (chart.config && chart.config.options && chart.config.options.indexAxis === 'y') {
@@ -2014,27 +2262,32 @@ const valueLabelPlugin = {
   }
 };
 
-// Chart 1: Pipeline vs Benchmark by Tower
+// Chart 1: Est. FTE Benefit vs Realized by Tower
 function renderTowerChart(towerStats) {
   destroyChart('tower');
   const ctx = document.getElementById('insightsChart');
   if (!ctx) return;
   const labels = Object.keys(towerStats);
-  const actual = labels.map(l => towerStats[l].base > 0 ? ((towerStats[l].pipe / towerStats[l].base) * 100).toFixed(1) : 0);
-  const bench = labels.map(l => towerStats[l].benchmark);
+  const estFte = labels.map(l => parseFloat((towerStats[l].estBenefit || 0).toFixed(1)));
+  const realizedFte = labels.map(l => parseFloat((towerStats[l].realized || 0).toFixed(1)));
   chartInstances['tower'] = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
       datasets: [
-        { label: 'Actual Release %', data: actual, backgroundColor: 'rgba(79,129,189,0.85)', borderColor: '#1f497d', borderWidth: 1 },
-        { label: 'Benchmark %', data: bench, backgroundColor: 'rgba(255,192,0,0.85)', borderColor: '#e27c00', borderWidth: 1 }
+        { label: 'Est. FTE Benefit', data: estFte, backgroundColor: 'rgba(79,129,189,0.85)', borderColor: '#1f497d', borderWidth: 1 },
+        { label: 'Realized FTE', data: realizedFte, backgroundColor: 'rgba(112,173,71,0.85)', borderColor: '#385723', borderWidth: 1 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } },
-      plugins: { legend: { position: 'top', labels: { font: { size: 9 }, boxWidth: 10 } } }
+      scales: {
+        y: { beginAtZero: true, ticks: { font: { size: 9 } } },
+        x: { ticks: { font: { size: 9 } } }
+      },
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 9 }, boxWidth: 10 } }
+      }
     },
     plugins: [valueLabelPlugin]
   });
@@ -2053,33 +2306,37 @@ function renderApprovalChart() {
     'Potential but lack CBA': 'Potential/Lack CBA',
     'Awaiting client approvals': 'Awaiting Approval',
     'Not Applicable': 'Not Applicable',
+    'Ideation': 'Ideation',
     '': 'Not Selected'
   };
   state.rows.forEach(r => {
     const k = r.decision || '';
-    counts[k] = (counts[k] || 0) + 1;
+    const fte = parseFloat(r.estimatedFteBenefit);
+    const fteVal = isNaN(fte) || fte < 0 ? 0 : fte;
+    counts[k] = (counts[k] || 0) + fteVal;
   });
 
   const entries = Object.entries(counts).filter(([, v]) => v > 0);
   const labels = entries.map(([k]) => labels_map[k] || k);
-  const data = entries.map(([, v]) => v);
+  const data = entries.map(([, v]) => parseFloat(v.toFixed(1)));
   const colors = entries.map(([k]) => {
     if (k === 'Deployed') return 'rgba(112,173,71,0.85)';
     if (k === 'In progress') return 'rgba(255,192,0,0.85)';
     if (k === 'Potential but lack CBA') return 'rgba(198,239,206,0.9)';
     if (k === 'Awaiting client approvals') return 'rgba(166,166,166,0.85)';
     if (k === 'Not Applicable') return 'rgba(220,220,220,0.85)';
+    if (k === 'Ideation') return 'rgba(255,255,255,1.0)';
     return 'rgba(200,200,200,0.5)';
   });
 
   chartInstances['approval'] = new Chart(ctx, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1 }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: '#ccc', borderWidth: 1 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'right', labels: { font: { size: 9 }, boxWidth: 10 } },
-        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} clients` } }
+        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${parseFloat(c.raw.toFixed(1))} FTE` } }
       }
     },
     plugins: [valueLabelPlugin]
@@ -2089,50 +2346,122 @@ function renderApprovalChart() {
 // Chart 3: Asset Penetration by Client (Horizontal Bar, Top 10)
 function renderHeatmapChart() {
   destroyChart('heatmap');
-  const ctx = document.getElementById('heatmapChart');
-  if (!ctx || state.assets.length === 0) return;
+  const container = document.getElementById('heatmapChart');
+  if (!container) return;
 
-  const clientMap = {};
-  state.rows.forEach(row => {
-    const c = row.client;
-    if (!clientMap[c]) clientMap[c] = { deployed: 0, inprog: 0, possible: 0 };
-    state.assets.forEach(asset => {
-      clientMap[c].possible++;
-      const cell = state.cellData[`${row.id}::${asset}`];
-      if (!cell) return;
-      if (cell.status === 'Deployed') clientMap[c].deployed++;
-      else if (cell.status === 'In progress') clientMap[c].inprog++;
+  const towers = ['PTP', 'OTC', 'RTR', 'FP&A'];
+  const data = {};
+
+  towers.forEach(tower => {
+    const clientsForTower = new Set();
+    const clientsCompletedForTower = new Set();
+    const clientsDeployedOrInProgress = new Set();
+    
+    let totalRealizedFte = 0;
+    let totalDeployedEstFte = 0;
+
+    state.rows.forEach(r => {
+      if (r.tower && r.tower.toLowerCase() === tower.toLowerCase()) {
+        const clientClean = r.client.trim();
+        clientsForTower.add(clientClean);
+
+        if (r.assessment === 'Completed') {
+          clientsCompletedForTower.add(clientClean);
+
+          const isRowActive = r.decision === 'Deployed' || r.decision === 'In progress';
+          let hasCellActive = false;
+          state.assets.forEach(asset => {
+            const cell = state.cellData[`${r.id}::${asset}`];
+            if (cell && (cell.status === 'Deployed' || cell.status === 'In progress')) {
+              hasCellActive = true;
+            }
+          });
+
+          if (isRowActive || hasCellActive) {
+            clientsDeployedOrInProgress.add(clientClean);
+          }
+        }
+
+        totalRealizedFte += parseFloat(r.realizedFte || 0);
+
+        let rowDeployedFte = 0;
+        state.assets.forEach(asset => {
+          const cell = state.cellData[`${r.id}::${asset}`];
+          if (cell && cell.status === 'Deployed') {
+            rowDeployedFte += parseFloat(cell.fte || 0);
+          }
+        });
+        let rowPropFte = 0;
+        if (r.decision === 'Deployed') {
+          rowPropFte = parseFloat(r.estimatedFteBenefit || 0);
+        }
+        totalDeployedEstFte += Math.max(rowDeployedFte, rowPropFte);
+      }
     });
+
+    const pctCompleted = clientsForTower.size > 0 ? (clientsCompletedForTower.size / clientsForTower.size * 100) : 0;
+    const pctDeployed = clientsForTower.size > 0 ? (clientsDeployedOrInProgress.size / clientsForTower.size * 100) : 0;
+    const pctRealized = totalDeployedEstFte > 0 ? (totalRealizedFte / totalDeployedEstFte * 100) : 0;
+
+    data[tower] = {
+      completed: pctCompleted,
+      deployed: pctDeployed,
+      realized: pctRealized
+    };
   });
 
-  const sorted = Object.entries(clientMap)
-    .map(([name, d]) => ({ name, pct: d.possible > 0 ? ((d.deployed + d.inprog) / d.possible * 100) : 0, dep: d.deployed, ip: d.inprog }))
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 10);
+  let html = `
+    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif;">
+      <table style="width: 100%; border-collapse: separate; border-spacing: 4px; table-layout: fixed; font-size: 9.5px;">
+        <thead>
+          <tr>
+            <th style="background: #1f497d; color: #fff; font-weight: 700; text-align: center; padding: 6px; border-radius: 3px; font-size: 10px;">Tower</th>
+            <th style="background: #1f497d; color: #fff; font-weight: 700; text-align: center; padding: 6px; border-radius: 3px; font-size: 10px;">Assessed completed</th>
+            <th style="background: #1f497d; color: #fff; font-weight: 700; text-align: center; padding: 6px; border-radius: 3px; font-size: 10px;">At least 1 asset deployed</th>
+            <th style="background: #1f497d; color: #fff; font-weight: 700; text-align: center; padding: 6px; border-radius: 3px; font-size: 10px;">FTE Realized</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
 
-  chartInstances['heatmap'] = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sorted.map(x => x.name.length > 14 ? x.name.slice(0, 13) + '…' : x.name),
-      datasets: [
-        { label: 'Deployed %', data: sorted.map(x => x.dep / (x.dep + x.ip + 0.001) * x.pct), backgroundColor: 'rgba(112,173,71,0.85)' },
-        { label: 'In Progress %', data: sorted.map(x => x.ip / (x.dep + x.ip + 0.001) * x.pct), backgroundColor: 'rgba(255,192,0,0.75)' }
-      ]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
-      scales: {
-        x: { stacked: true, beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 9 } } },
-        y: { stacked: true, ticks: { font: { size: 9 } } }
-      },
-      plugins: { legend: { position: 'top', labels: { font: { size: 9 }, boxWidth: 10 } } }
-    },
-    plugins: [valueLabelPlugin]
+  towers.forEach(t => {
+    const vals = data[t];
+    
+    const getCellHtml = (pct) => {
+      const ratio = pct / 100;
+      const hue = 207;
+      const sat = 40 + Math.round(60 * ratio);
+      const light = 96 - Math.round(50 * ratio);
+      const bg = `hsl(${hue}, ${sat}%, ${light}%)`;
+      const color = light < 65 ? '#fff' : '#1f497d';
+      const border = `1px solid hsl(${hue}, ${sat}%, ${light - 8}%)`;
+      return `
+        <td style="background: ${bg}; color: ${color}; border: ${border}; border-radius: 3px; text-align: center; padding: 10px 4px; font-weight: 700; font-size: 11px;">
+          ${pct.toFixed(0)}%
+        </td>
+      `;
+    };
+
+    html += `
+          <tr>
+            <td style="background: #f2f5f9; color: #1f497d; font-weight: 700; text-align: center; padding: 10px 4px; border: 1px solid #d3dfee; border-radius: 3px; font-size: 10.5px;">${t}</td>
+            ${getCellHtml(vals.completed)}
+            ${getCellHtml(vals.deployed)}
+            ${getCellHtml(vals.realized)}
+          </tr>
+    `;
   });
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  container.innerHTML = html;
 }
 
-// Chart 4: High Opportunity Targets — clients with most "Potential but lack CBA" FTE
+// Chart 4: Potential to Accelerate AI Penetration
 function renderPotentialChart() {
   destroyChart('potential');
   const ctx = document.getElementById('potentialChart');
@@ -2142,28 +2471,34 @@ function renderPotentialChart() {
   state.rows.forEach(row => {
     const c = row.client;
     if (!clientPotential[c]) { clientPotential[c] = 0; }
+    
+    let added = 0;
     state.assets.forEach(asset => {
       const cell = state.cellData[`${row.id}::${asset}`];
-      if (cell && cell.status === 'Potential but lack CBA') {
-        clientPotential[c] += parseFloat(cell.fte || 0);
+      if (cell && (cell.status === 'Potential but lack CBA' || cell.status === 'Awaiting client approvals')) {
+        added += parseFloat(cell.fte || 0);
       }
     });
-    if (row.decision === 'Potential but lack CBA') {
-      clientPotential[c] += parseFloat(row.estimatedFteBenefit || 0);
+    
+    let rowVal = 0;
+    if (row.decision === 'Potential but lack CBA' || row.decision === 'Awaiting client approvals') {
+      rowVal = parseFloat(row.estimatedFteBenefit || 0);
     }
+    
+    clientPotential[c] += Math.max(added, rowVal);
   });
 
   const sorted = Object.entries(clientPotential)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
+    .slice(0, 6);
 
   if (sorted.length === 0) {
     const c2 = ctx.getContext('2d');
     c2.fillStyle = '#aaa';
     c2.font = '12px Outfit';
     c2.textAlign = 'center';
-    c2.fillText('No "Potential but lack CBA" data found.', ctx.width / 2, ctx.height / 2);
+    c2.fillText('No acceleration potential data found.', ctx.width / 2, ctx.height / 2);
     return;
   }
 
@@ -2172,10 +2507,10 @@ function renderPotentialChart() {
     data: {
       labels: sorted.map(([name]) => name.length > 14 ? name.slice(0, 13) + '…' : name),
       datasets: [{
-        label: 'Potential FTE (Lack CBA)',
+        label: 'Potential to Accelerate (FTE)',
         data: sorted.map(([, v]) => v),
-        backgroundColor: 'rgba(198,239,206,0.9)',
-        borderColor: 'rgba(112,173,71,1)',
+        backgroundColor: 'rgba(0, 114, 198, 0.2)',
+        borderColor: 'rgba(0, 114, 198, 1)',
         borderWidth: 1
       }]
     },
@@ -2188,7 +2523,7 @@ function renderPotentialChart() {
       },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: c => ` ${c.raw.toFixed(0)} FTE potential` } }
+        tooltip: { callbacks: { label: c => ` ${c.raw.toFixed(1)} FTE potential` } }
       }
     },
     plugins: [valueLabelPlugin]
@@ -2486,6 +2821,7 @@ function openModal(id) {
   if (id === 'modal-process') populateProcessModalList();
   if (id === 'modal-type') populateTypeModalList();
   if (id === 'modal-region') populateRegionModalList();
+  if (id === 'modal-billing-type') populateBillingTypeModalList();
 }
 
 // --- Client Master ---
@@ -2756,7 +3092,15 @@ function handleAddOwner() {
   const name = document.getElementById('newOwnerName').value.trim();
   const email = document.getElementById('newOwnerEmail').value.trim();
   if (!name || !email) { alert('Both name and email are required.'); return; }
-  if (state.owners[name]) { alert('Owner already exists.'); return; }
+  
+  const nameLower = name.toLowerCase();
+  const matchedNameKey = Object.keys(state.owners).find(k => k.toLowerCase() === nameLower);
+  if (matchedNameKey) { alert('An owner with this name already exists.'); return; }
+  
+  const emailLower = email.toLowerCase();
+  const matchedEmailKey = Object.keys(state.owners).find(k => (state.owners[k] || '').trim().toLowerCase() === emailLower);
+  if (matchedEmailKey) { alert(`This email address is already registered to owner "${matchedEmailKey}".`); return; }
+
   state.owners[name] = email;
   document.getElementById('newOwnerName').value = '';
   document.getElementById('newOwnerEmail').value = '';
@@ -2770,6 +3114,43 @@ function handleDeleteOwner(name) {
   state.rows.forEach(r => { if (r.owner === name) r.owner = 'None'; });
   populateOwnerModalList();
   renderInputTable();
+}
+
+// --- Billing Type Modal ---
+function populateBillingTypeModalList() {
+  const c = document.getElementById('modalBillingTypeList');
+  if (!c) return;
+  const list = state.billingTypes || ['FTE', 'TBP', 'Fixed', 'Value'];
+  c.innerHTML = list.length
+    ? list.map(bt => `
+      <div class="list-item">
+        <span><strong>${escHtml(bt)}</strong></span>
+        <button class="list-item-btn" onclick="handleDeleteBillingType('${escHtml(bt)}')">&times;</button>
+      </div>`).join('')
+    : '<div class="list-item" style="color:#aaa;">No billing types defined.</div>';
+}
+
+function handleAddBillingType() {
+  const input = document.getElementById('newBillingTypeName');
+  const raw = input.value.trim();
+  if (!raw) return;
+  if (raw.length > 30) { alert('Billing type name too long (max 30 chars).'); return; }
+  if (!state.billingTypes) state.billingTypes = [];
+  if (state.billingTypes.includes(raw)) { alert('Billing type already exists.'); return; }
+  state.billingTypes.push(raw);
+  input.value = '';
+  populateBillingTypeModalList();
+  renderInputTable();
+  saveData();
+}
+
+function handleDeleteBillingType(btName) {
+  if (!confirm(`Delete billing type "${btName}"? It will be cleared from all rows.`)) return;
+  state.billingTypes = (state.billingTypes || []).filter(bt => bt !== btName);
+  state.rows.forEach(row => { if (row.billingType === btName) row.billingType = ''; });
+  populateBillingTypeModalList();
+  renderInputTable();
+  saveData();
 }
 
 // ==========================================
@@ -2940,12 +3321,36 @@ function handleBulkUpload(event) {
             if (normRow['assessmentstatus'] !== undefined && normRow['assessmentstatus'] !== '') {
               target.assessment = String(normRow['assessmentstatus']).trim();
             }
-            if (normRow['clientdecision'] !== undefined && normRow['clientdecision'] !== '') {
-              target.decision = String(normRow['clientdecision']).trim();
-            } else if (normRow['clientapprovalforai'] !== undefined && normRow['clientapprovalforai'] !== '') {
-              target.decision = String(normRow['clientapprovalforai']).trim();
-            } else if (normRow['status'] !== undefined && normRow['status'] !== '') {
-              target.decision = String(normRow['status']).trim();
+            let hasStatusCol = false;
+            let uploadedStatus = '';
+            if (normRow['clientdecision'] !== undefined) {
+              hasStatusCol = true;
+              uploadedStatus = String(normRow['clientdecision']).trim();
+            } else if (normRow['clientapprovalforai'] !== undefined) {
+              hasStatusCol = true;
+              uploadedStatus = String(normRow['clientapprovalforai']).trim();
+            } else if (normRow['status'] !== undefined) {
+              hasStatusCol = true;
+              uploadedStatus = String(normRow['status']).trim();
+            }
+
+            if (hasStatusCol) {
+              const statusMap = {
+                'ideation': 'Ideation',
+                'deployed': 'Deployed',
+                'potential but lack cba': 'Potential but lack CBA',
+                'in progress': 'In progress',
+                'awaiting client approvals': 'Awaiting client approvals',
+                'dropped': 'Dropped',
+                'not applicable': 'Not Applicable',
+                'select': ''
+              };
+              const clean = uploadedStatus.toLowerCase();
+              if (statusMap[clean] !== undefined) {
+                target.decision = statusMap[clean];
+              } else {
+                target.decision = uploadedStatus;
+              }
             }
             
             if (normRow['proposedasset'] !== undefined && normRow['proposedasset'] !== '') {
@@ -2956,6 +3361,15 @@ function handleBulkUpload(event) {
             
             if (normRow['type'] !== undefined && normRow['type'] !== '') {
               target.initiativeType = String(normRow['type']).trim();
+            }
+            if (normRow['billingtype'] !== undefined && normRow['billingtype'] !== '') {
+              const btName = String(normRow['billingtype']).trim();
+              if (btName) {
+                target.billingType = btName;
+                if (!state.billingTypes.map(b => b.toLowerCase()).includes(btName.toLowerCase())) {
+                  state.billingTypes.push(btName);
+                }
+              }
             }
             if (normRow['implementationcost'] !== undefined && normRow['implementationcost'] !== '') {
               target.implementationCost = parseFloat(normRow['implementationcost']) || 0;
@@ -2976,27 +3390,76 @@ function handleBulkUpload(event) {
               }
             }
             if (normRow['owner'] !== undefined && normRow['owner'] !== '') {
-              target.owner = String(normRow['owner']).trim() || 'None';
+              const rawOwner = String(normRow['owner']).trim();
+              if (rawOwner.toLowerCase() === 'none' || rawOwner === '') {
+                target.owner = 'None';
+              } else {
+                let rawEmail = '';
+                if (normRow['owneremail'] !== undefined) {
+                  rawEmail = String(normRow['owneremail']).trim();
+                } else if (normRow['owneremailid'] !== undefined) {
+                  rawEmail = String(normRow['owneremailid']).trim();
+                } else if (normRow['email'] !== undefined) {
+                  rawEmail = String(normRow['email']).trim();
+                }
+
+                state.owners = state.owners || {};
+                const matchedKey = Object.keys(state.owners).find(k => k.toLowerCase() === rawOwner.toLowerCase());
+                
+                if (matchedKey) {
+                  target.owner = matchedKey;
+                  if (rawEmail) {
+                    const isEmailUsedByOther = Object.keys(state.owners).some(k => k.toLowerCase() !== matchedKey.toLowerCase() && (state.owners[k] || '').trim().toLowerCase() === rawEmail.toLowerCase());
+                    if (!isEmailUsedByOther) {
+                      state.owners[matchedKey] = rawEmail;
+                    }
+                  }
+                } else {
+                  let emailMatchKey = null;
+                  if (rawEmail) {
+                    emailMatchKey = Object.keys(state.owners).find(k => (state.owners[k] || '').trim().toLowerCase() === rawEmail.toLowerCase());
+                  }
+
+                  if (emailMatchKey) {
+                    target.owner = emailMatchKey;
+                  } else {
+                    state.owners[rawOwner] = rawEmail;
+                    target.owner = rawOwner;
+                  }
+                }
+              }
             }
             if (normRow['actionplan'] !== undefined) {
               target.actionPlan = String(normRow['actionplan']).trim();
             }
+            if (normRow['targetdate'] !== undefined) {
+              target.targetDate = formatExcelDate(normRow['targetdate']);
+            }
             if (normRow['clientactionplan'] !== undefined) {
               target.clientActionPlan = String(normRow['clientactionplan']).trim();
             }
+            if (normRow['clienthelprequired'] !== undefined) {
+              target.clientHelpRequired = String(normRow['clienthelprequired']).trim();
+            }
+            if (normRow['clienthelprequiredfromwhom'] !== undefined) {
+              target.clientHelpRequiredFromWhom = String(normRow['clienthelprequiredfromwhom']).trim();
+            }
           };
 
+          let uploadedRow = null;
           if (existing) {
             applyFields(existing);
+            uploadedRow = existing;
           } else {
             const uniq = new Set(state.rows.map(x => x.client.trim()));
             if (!uniq.has(client) && uniq.size >= 500) return;
             
             const newRow = {
               id: `row_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
-              client, tower, region: region || '', process: process || '', baseFte: '', addressableFte: '', assessment: 'Not Started',
-              pipelineFte: '', decision: '', initiative: '', initiativeType: '',
-              estimatedFteBenefit: '', implementationCost: '', dollarSavings: '', benchmark: 20, owner: 'None', stack: '', actionPlan: '', clientActionPlan: ''
+              client, tower, region: region || '', process: process || '', billingType: 'FTE', baseFte: '', addressableFte: '', assessment: 'Not Started',
+              pipelineFte: '', decision: '', targetDate: '', initiative: '', initiativeType: '',
+              estimatedFteBenefit: '', implementationCost: '', dollarSavings: '', benchmark: 20, owner: 'None', stack: '', actionPlan: '', clientActionPlan: '',
+              clientHelpRequired: '', clientHelpRequiredFromWhom: ''
             };
             applyFields(newRow);
             
@@ -3005,6 +3468,28 @@ function handleBulkUpload(event) {
             if (currentTowers.size <= 8) {
               state.rows.push(newRow);
               newRows++;
+              uploadedRow = newRow;
+            }
+          }
+
+          if (uploadedRow) {
+            if (uploadedRow.initiative) {
+              const cellId = `${uploadedRow.id}::${uploadedRow.initiative}`;
+              state.cellData[cellId] = {
+                fte: uploadedRow.estimatedFteBenefit === '' ? 0 : parseFloat(uploadedRow.estimatedFteBenefit || 0),
+                status: uploadedRow.decision || 'Not Applicable'
+              };
+              Object.keys(state.cellData).forEach(k => {
+                if (k.startsWith(`${uploadedRow.id}::`) && k !== cellId) {
+                  delete state.cellData[k];
+                }
+              });
+            } else {
+              Object.keys(state.cellData).forEach(k => {
+                if (k.startsWith(`${uploadedRow.id}::`)) {
+                  delete state.cellData[k];
+                }
+              });
             }
           }
 
@@ -3071,23 +3556,22 @@ function downloadBulkTemplate() {
 
     const hdrStyle = { font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 10 }, fill: { fgColor: { rgb: '1F497D' } }, alignment: { horizontal: 'center', wrapText: true } };
     const hintStyle = { font: { italic: true, color: { rgb: '7F7F7F' }, sz: 9 }, fill: { fgColor: { rgb: 'FFF2CC' } }, alignment: { wrapText: true } };
-    const sampleStyle = { font: { sz: 10 }, fill: { fgColor: { rgb: 'F2F2F2' } } };
-
-    // Sheet 1: Master_Tracker
-    const masterCols = ['Client Name', 'Region', 'Tower', 'Process', 'Baseline FTE', 'Assessment Status', 'Agentic Potential FTE',
-      'Client Approval for AI', 'Proposed Asset', 'Type', 'Estimated FTE Benefit', 'Realized FTE', 'Implementation Cost ($)', '$ Savings', 'Owner', 'Benchmark %'];
+    const sampleStyle = { font: { sz: 10 } }; // Sheet 1: Master_Tracker
+    const masterCols = ['Client Name', 'Region', 'Tower', 'Process', 'Billing Type', 'Baseline FTE', 'Addressable FTE', 'Assessment Status', 'AI Potential FTE',
+      'Proposed Asset', 'Type', 'Stack', 'Status', 'Target Date', 'Estimated FTE Benefit', 'Realized FTE', 'Implementation Cost', '$ Savings', 'Owner', 'Owner Email', 'Benchmark %', 'Action Plan'];
     const masterHints = [
       'Unique client name (max 500)', 'Region name from master list (e.g. APAC, EMEA, Americas)', 'Tower name from master list (max 8 per client)',
-      'Process name from master list (auto-added if new)', 'Whole number ≥ 0', 'Not Started / In Progress / Completed / No Scale',
-      'Fill if In Progress or Completed', 'Select / Deployed / Potential but lack CBA / In progress / Awaiting client approvals / Not Applicable',
-      'Asset name (creates asset column if new)', 'From initiative type master (max 4 types)',
-      'Fill if In Progress or Completed', 'Manually entered realized FTE (<= AI Potential FTE)', 'USD number', 'USD number (negative allowed)', 'Owner name', 'Number 0-100'
+      'Process name from master list (auto-added if new)', 'Billing type (e.g. FTE, TBP, Fixed, Value)', 'Whole number ≥ 0', 'Whole number ≤ Baseline FTE', 'Not Started / In Progress / Completed / No Scale',
+      'Fill if In Progress or Completed', 'Asset name (creates asset column if new)', 'From initiative type master (max 4 types)', 'Technology stack (e.g. Python, Gemini)',
+      'Select / Ideation / Deployed / Potential but lack CBA / In progress / Awaiting client approvals / Not Applicable',
+      'Target date in dd-mm-yy format',
+      'Fill if In Progress or Completed', 'Manually entered realized FTE (<= AI Potential FTE)', 'USD number', 'USD number (negative allowed)', 'Owner name (will auto-add to directory)', 'Owner email id (will auto-add to directory)', 'Number 0-100', 'Action plan description'
     ];
     const masterSamples = [
-      ['Client Alpha', 'APAC', 'PTP', 'Invoicing', 150, 'Completed', 30, 'Deployed', 'Invoice Automation', 'Agentic', 28, 25, 75000, 120000, 'Jane Smith', 25],
-      ['Client Alpha', 'APAC', 'RTR', 'GL Reconciliation', 80, 'In Progress', 15, 'In progress', 'GL Reconciliation Bot', 'RPA', 12, 10, 40000, 60000, 'Jane Smith', 20],
-      ['Client Beta', 'EMEA', 'OTC', 'Billing', 200, 'Not Started', 0, 'Select', '', '', 0, 0, 0, 0, 'None', 20],
-      ['Client Beta', 'Americas', 'FP&A', 'Reporting', 100, 'No Scale', 0, 'Not Applicable', '', '', 0, 0, 0, 0, 'None', 0],
+      ['Client Alpha', 'APAC', 'PTP', 'Invoicing', 'FTE', 150, 120, 'Completed', 30, 'Invoice Automation', 'Agentic', 'Python/Gemini', 'Deployed', '15-08-26', 28, 25, 75000, 120000, 'Jane Smith', 'jane.smith@accenture.com', 25, 'Standard migration plan'],
+      ['Client Alpha', 'APAC', 'RTR', 'GL Reconciliation', 'FTE', 80, 80, 'In Progress', 15, 'GL Reconciliation Bot', 'RPA', 'UiPath', 'In progress', '30-11-26', 12, 10, 40000, 60000, 'Jane Smith', 'jane.smith@accenture.com', 20, 'Automation in progress'],
+      ['Client Beta', 'EMEA', 'OTC', 'Billing', 'TBP', 200, 200, 'Not Started', 0, '', '', '', 'Select', '', 0, 0, 0, 0, 'None', '', 20, ''],
+      ['Client Beta', 'Americas', 'FP&A', 'Reporting', 'Fixed', 100, 100, 'No Scale', 0, '', '', '', 'Not Applicable', '', 0, 0, 0, 0, 'None', '', 0, ''],
     ];
     const wsMaster = XLSX.utils.aoa_to_sheet([masterCols, masterHints, ...masterSamples]);
     wsMaster['!cols'] = masterCols.map(() => ({ wch: 22 }));
@@ -3100,42 +3584,26 @@ function downloadBulkTemplate() {
       const ref = XLSX.utils.encode_cell({ r: ri + 2, c: ci }); if (wsMaster[ref]) wsMaster[ref].s = sampleStyle;
     }));
     XLSX.utils.book_append_sheet(wb, wsMaster, 'Master_Tracker');
-
-    // Sheet 2: Asset_Mapping
-    const assetNames = state.assets.length > 0 ? state.assets : ['Invoice Automation', 'GL Reconciliation Bot', 'AP Matching Engine'];
-    const assetHdrs = ['Client Name', 'Region', 'Tower', 'Process', 'Base FTE', ...assetNames, 'Future State FTE'];
-    const assetHints = ['Same as Master_Tracker', 'Same as Master_Tracker', 'Same as Master_Tracker', 'Same as Master_Tracker', 'Baseline FTE',
-      ...assetNames.map(() => 'FTE count (status defaults to Deployed)'), 'Auto-calculated (leave blank)'];
-    const assetSamples = [
-      ['Client Alpha', 'APAC', 'PTP', 'Invoicing', 150, ...assetNames.map((a, i) => i === 0 ? 28 : ''), ''],
-      ['Client Alpha', 'APAC', 'RTR', 'GL Reconciliation', 80, ...assetNames.map((a, i) => i === 1 ? 12 : ''), ''],
-    ];
-    const wsAsset = XLSX.utils.aoa_to_sheet([assetHdrs, assetHints, ...assetSamples]);
-    wsAsset['!cols'] = assetHdrs.map(() => ({ wch: 22 }));
-    wsAsset['!rows'] = [{ hpt: 22 }, { hpt: 36 }];
-    assetHdrs.forEach((_, ci) => {
-      const r0 = XLSX.utils.encode_cell({ r: 0, c: ci }); if (wsAsset[r0]) wsAsset[r0].s = hdrStyle;
-      const r1 = XLSX.utils.encode_cell({ r: 1, c: ci }); if (wsAsset[r1]) wsAsset[r1].s = hintStyle;
-    });
-    XLSX.utils.book_append_sheet(wb, wsAsset, 'Asset_Mapping');
-
-    // Sheet 3: Instructions
+ 
+    // Sheet 2: Instructions
     const instr = [
       ['AI Penetration Tracker – Bulk Upload Template'], [''],
       ['STEPS'],
       ['1', 'Fill Master_Tracker sheet (delete hint row before upload, or leave – rows with no Client Name are skipped)'],
-      ['2', 'Optionally fill Asset_Mapping to pre-load the asset grid'],
-      ['3', 'Click "📄 Bulk Upload XLS" on the dashboard'],
-      ['4', 'Click "Save to File" to persist changes'], [''],
+      ['2', 'Click "📄 Bulk Upload XLS" on the dashboard'],
+      ['3', 'Click "Save to File" to persist changes'], [''],
       ['FIELD RULES'],
       ['Tower', 'Must be a valid tower. New towers in file will be auto-added.'],
       ['Process', 'Must be a valid process. New processes in file will be auto-added.'],
-      ['Baseline FTE', 'Whole number ≥ 0. Must be ≥ Agentic Potential FTE.'],
+      ['Baseline FTE', 'Whole number ≥ 0. Must be ≥ AI Potential FTE.'],
+      ['Addressable FTE', 'Whole number ≤ Baseline FTE. Must be ≥ AI Potential FTE.'],
       ['Assessment Status', 'Not Started | In Progress | Completed | No Scale'],
-      ['Client Approval for AI', 'Select | Deployed | Potential but lack CBA | In progress | Awaiting client approvals | Not Applicable'],
+      ['Status', 'Select | Ideation | Deployed | Potential but lack CBA | In progress | Awaiting client approvals | Not Applicable'],
+      ['Target Date', 'Manual target date input in dd-mm-yy format (e.g. 15-08-26).'],
       ['Type', 'Must match one of up to 4 values in the Type Master (or will be auto-added if space).'],
       ['$ Savings', 'Negative values allowed (e.g. -50000).'],
-      ['Owner', 'Use "None" for no owner. Must match Owner Directory for email links.'],
+      ['Owner', 'Use "None" for no owner. Will auto-add or update Owner Directory.'],
+      ['Owner Email', 'Owner email address. Will auto-add or update Owner Directory.'],
     ];
     const wsI = XLSX.utils.aoa_to_sheet(instr);
     wsI['!cols'] = [{ wch: 26 }, { wch: 80 }];
@@ -3157,9 +3625,9 @@ function downloadXls() {
   try {
     const wb = XLSX.utils.book_new();
     const masterData = [[
-      'Client Name', 'Region', 'Tower', 'Process', 'Baseline FTE', 'Addressable FTE', 'Assessment Status', 'Agentic Potential FTE',
-      'Client Approval for AI', 'Proposed Asset', 'Type', 'Stack', 'Est. FTE Benefit', 'Realized FTE',
-      'Implementation Cost ($)', '$ Savings', 'Remaining Potential', 'Owner',
+      'Client Name', 'Region', 'Tower', 'Process', 'Billing Type', 'Baseline FTE', 'Addressable FTE', 'Assessment Status', 'AI Potential FTE',
+      'Proposed Asset', 'Type', 'Stack', 'Status', 'Target Date', 'Est. FTE Benefit', 'Realized FTE',
+      'Implementation Cost', '$ Savings', 'Remaining Potential', 'Owner', 'Owner Email',
       'AI Potential %', 'Benefit %', 'Benchmark %', 'Variance %', 'Action Plan'
     ]];
     state.rows.forEach(row => {
@@ -3173,10 +3641,12 @@ function downloadXls() {
       const benPct = pipeVal > 0 ? (benVal / pipeVal) * 100 : 0;
       const variance = benPct - (row.benchmark || 0);
 
+      const ownerEmail = state.owners[row.owner || 'None'] || '';
+
       masterData.push([
-        row.client, row.region || '', row.tower, row.process || '', row.baseFte, row.addressableFte, row.assessment, row.pipelineFte,
-        row.decision, row.initiative || '', row.initiativeType || '', row.stack || '', row.estimatedFteBenefit, row.realizedFte || '',
-        row.implementationCost || 0, row.dollarSavings || 0, rem, row.owner || 'None',
+        row.client, row.region || '', row.tower, row.process || '', row.billingType || '', row.baseFte, row.addressableFte, row.assessment, row.pipelineFte,
+        row.initiative || '', row.initiativeType || '', row.stack || '', row.decision, row.targetDate || '', row.estimatedFteBenefit, row.realizedFte || '',
+        formatCurrency(row.implementationCost || 0), formatCurrency(row.dollarSavings || 0), rem, row.owner || 'None', ownerEmail,
         `${aiPotPct.toFixed(1)}%`, `${benPct.toFixed(1)}%`, `${row.benchmark}%`, `${variance.toFixed(1)}%`, row.actionPlan || ''
       ]);
     });
@@ -3184,16 +3654,60 @@ function downloadXls() {
 
     const assetHdr = ['Client Name', 'Region', 'Tower', 'Process', 'Base FTE', ...state.assets, 'Future State FTE'];
     const assetData = [assetHdr];
-    state.rows.forEach(row => {
-      const arr = [row.client, row.region || '', row.tower, row.process || '', row.baseFte];
+    
+    const assetGroups = [];
+    const assetGroupMap = new Map();
+    state.rows.forEach(r => {
+      const key = `${r.client.trim().toLowerCase()}|||${r.tower.trim().toLowerCase()}`;
+      if (!assetGroupMap.has(key)) {
+        const group = {
+          client: r.client,
+          tower: r.tower,
+          region: r.region || '',
+          process: r.process || '',
+          baseFte: parseFloat(r.baseFte || 0),
+          rows: [r]
+        };
+        assetGroupMap.set(key, group);
+        assetGroups.push(group);
+      } else {
+        const group = assetGroupMap.get(key);
+        group.rows.push(r);
+        const baseFteVal = parseFloat(r.baseFte || 0);
+        if (baseFteVal > group.baseFte) {
+          group.baseFte = baseFteVal;
+        }
+        if (r.region && !group.region.split(', ').includes(r.region)) {
+          group.region = group.region ? `${group.region}, ${r.region}` : r.region;
+        }
+        if (r.process && !group.process.split(', ').includes(r.process)) {
+          group.process = group.process ? `${group.process}, ${r.process}` : r.process;
+        }
+      }
+    });
+
+    assetGroups.forEach(group => {
+      const arr = [group.client, group.region, group.tower, group.process, group.baseFte];
       let d = 0, p = 0, ip = 0;
       state.assets.forEach(a => {
-        const cell = state.cellData[`${row.id}::${a}`] || { fte: '', status: 'Not Applicable' };
-        const v = parseFloat(cell.fte || 0);
-        if (cell.status === 'Deployed') d += v; else if (cell.status === 'Potential but lack CBA') p += v; else if (cell.status === 'In progress') ip += v;
-        arr.push(cell.fte !== '' && cell.status !== 'Not Applicable' ? `${cell.fte} (${cell.status})` : '');
+        let totalFte = 0;
+        let cellStatus = 'Not Applicable';
+        let hasAllocation = false;
+        group.rows.forEach(r => {
+          const cell = state.cellData[`${r.id}::${a}`];
+          if (cell && cell.fte !== '' && cell.status !== 'Not Applicable') {
+            totalFte += parseFloat(cell.fte || 0);
+            cellStatus = cell.status;
+            hasAllocation = true;
+          }
+        });
+        if (cellStatus === 'Deployed') d += totalFte;
+        else if (cellStatus === 'Potential but lack CBA') p += totalFte;
+        else if (cellStatus === 'In progress' || cellStatus === 'In Progress') ip += totalFte;
+        
+        arr.push(hasAllocation && totalFte > 0 ? `${totalFte} (${cellStatus})` : '');
       });
-      arr.push(row.baseFte - d - p - ip);
+      arr.push(group.baseFte - d - p - ip);
       assetData.push(arr);
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(assetData), 'Asset_Mapping');
@@ -3201,7 +3715,8 @@ function downloadXls() {
     // Sheet 3: Client_Summary
     const clientCols = [
       'Client Name', 'Client FTEs', 'Total Addressable FTE', 'Total AI Potential FTE',
-      'Total Est. FTE Benefit', 'Total Remaining Potential', 'Owner', 'Action Plan'
+      'Total Est. FTE Benefit', 'Total Remaining Potential', 'Owner', 'Action Plan',
+      'Help required', 'Help required from whom'
     ];
     const clientData = [clientCols];
 
@@ -3249,10 +3764,13 @@ function downloadXls() {
         clientOwner = 'Multiple';
       }
       const clientActionPlan = rows[0]?.clientActionPlan || '';
+      const clientHelpRequired = rows[0]?.clientHelpRequired || '';
+      const clientHelpRequiredFromWhom = rows[0]?.clientHelpRequiredFromWhom || '';
 
       clientData.push([
         client, clientFtes, totalAddressable, totalAiPotential,
-        totalEstBenefit, totalRemaining, clientOwner, clientActionPlan
+        totalEstBenefit, totalRemaining, clientOwner, clientActionPlan,
+        clientHelpRequired, clientHelpRequiredFromWhom
       ]);
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(clientData), 'Client_Summary');
@@ -3286,12 +3804,12 @@ function downloadPpt() {
     slide2.addText('Executive Portfolio Summary', { x: .5, y: .4, w: 9, h: .5, fontSize: 22, bold: true, color: '1F497D', fontFace: 'Outfit' });
     slide2.addTable([[
       { text: `Baseline Headcount\n${totalBase} FTE`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
-      { text: `Agentic Potential FTE\n${totalPipe} FTE`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
+      { text: `AI Potential FTE\n${totalPipe} FTE`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
       { text: `Implementation Cost\n$${totalCost.toLocaleString()}`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } },
       { text: `Annual Savings\n$${totalSavings.toLocaleString()}`, opts: { fontFace: 'Outfit', fontSize: 13, color: '1F497D', fill: 'F2F2F2', align: 'center' } }
     ]], { x: .5, y: 1.2, w: 9, h: 1 });
     slide2.addText(
-      `Key Observations:\n- ${totalBase} baseline FTEs tracked.\n- ${totalPipe} FTE agentic potential identified.\n- $${totalSavings.toLocaleString()} savings targeted on $${totalCost.toLocaleString()} investment.\n- ${state.rows.length > 0 ? ((completedCount / state.rows.length) * 100).toFixed(0) : 0}% assessments completed.`,
+      `Key Observations:\n- ${totalBase} baseline FTEs tracked.\n- ${totalPipe} FTE AI potential identified.\n- $${totalSavings.toLocaleString()} savings targeted on $${totalCost.toLocaleString()} investment.\n- ${state.rows.length > 0 ? ((completedCount / state.rows.length) * 100).toFixed(0) : 0}% assessments completed.`,
       { x: .5, y: 2.5, w: 9, h: 2.5, fontSize: 12, fontFace: 'Outfit', color: '333333', lineSpacing: 22 }
     );
     const dt = getFormattedDateTime();
@@ -3307,7 +3825,8 @@ function renderClientSummary() {
   const summaryHeaders = document.querySelectorAll('#clientSummaryTable thead th');
   const summaryKeys = [
     'client-name', 'client-ftes', 'total-addressable', 'total-ai-potential',
-    'total-est-benefit', 'total-remaining', 'owner', 'action-plan'
+    'total-est-benefit', 'total-remaining', 'owner', 'action-plan',
+    'help-required', 'help-from-whom'
   ];
   summaryHeaders.forEach((th, idx) => {
     if (summaryKeys[idx]) {
@@ -3385,6 +3904,8 @@ function renderClientSummary() {
     }
 
     const clientActionPlan = rows[0]?.clientActionPlan || '';
+    const clientHelpRequired = rows[0]?.clientHelpRequired || '';
+    const clientHelpRequiredFromWhom = rows[0]?.clientHelpRequiredFromWhom || '';
 
     // Render Owner cell
     let ownerCellContent = '';
@@ -3436,6 +3957,14 @@ function renderClientSummary() {
         <input type="text" value="${escHtml(clientActionPlan)}" style="width: 100%; box-sizing: border-box;"
           onchange="handleClientActionPlanChange('${escHtml(client)}', this)" placeholder="Action plan">
       </td>
+      <td>
+        <input type="text" value="${escHtml(clientHelpRequired)}" style="width: 100%; box-sizing: border-box;"
+          onchange="handleClientHelpRequiredChange('${escHtml(client)}', this)" placeholder="Help required">
+      </td>
+      <td>
+        <input type="text" value="${escHtml(clientHelpRequiredFromWhom)}" style="width: 100%; box-sizing: border-box;"
+          onchange="handleClientHelpRequiredFromWhomChange('${escHtml(client)}', this)" placeholder="Help required from whom">
+      </td>
     `;
     tbody.appendChild(tr);
   });
@@ -3447,7 +3976,7 @@ function renderClientSummary() {
     <td class="col-num">${grandAiPotential}</td>
     <td class="col-num">${grandEstBenefit}</td>
     <td class="col-num">${grandRemaining}</td>
-    <td colspan="2"></td>
+    <td colspan="4"></td>
   `;
 }
 
@@ -3514,6 +4043,8 @@ const FUNCTIONS_REGISTRY = [
   { name: 'handleClientOwnerChange', line: 1475, category: 'Owner & Action Plan Editors', desc: 'Applies owner changes across all rows of the client and updates database.' },
   { name: 'handleRowActionPlanChange', line: 1484, category: 'Owner & Action Plan Editors', desc: 'Enforces 35-word limit and saves input page row Action Plan.' },
   { name: 'handleClientActionPlanChange', line: 1498, category: 'Owner & Action Plan Editors', desc: 'Enforces 35-word limit and syncs Action Plan across all client rows.' },
+  { name: 'handleClientHelpRequiredChange', line: 1555, category: 'Owner & Action Plan Editors', desc: 'Enforces 35-word limit and syncs Help Required across all client rows.' },
+  { name: 'handleClientHelpRequiredFromWhomChange', line: 1568, category: 'Owner & Action Plan Editors', desc: 'Enforces 35-word limit and syncs Help Required From Whom across all client rows.' },
   { name: 'showInitiativeSuggestions', line: 1514, category: 'Autocomplete & Suggestions', desc: 'Displays autocomplete dropdown suggestion box for assets.' },
   { name: 'filterInitiativeSuggestions', line: 1516, category: 'Autocomplete & Suggestions', desc: 'Filters suggestion options based on input text.' },
   { name: 'selectInitiative', line: 1528, category: 'Autocomplete & Suggestions', desc: 'Populates suggested asset into cell input and closes suggestions.' },
@@ -3575,7 +4106,9 @@ const FUNCTIONS_REGISTRY = [
   { name: 'downloadXls', line: 3053, category: 'File Import & Export', desc: 'Generates styled workbook containing Master_Tracker, Asset_Mapping, and Client_Summary worksheets.' },
   { name: 'downloadPpt', line: 3169, category: 'File Import & Export', desc: 'Creates and downloads executive presentation summarizing portfolio findings.' },
   { name: 'renderClientSummary', line: 3203, category: 'Client Summary Tab Rendering', desc: 'Compiles and renders Client FTE Summary table with dynamic grouping and resizer handles.' },
-  { name: 'renderLeaderboard', line: 3480, category: 'AI Leaderboard Rendering', desc: 'Renders the Executive AI Leaderboard ranking clients dynamically as a clean horizontal bar chart with business icons.' }
+  { name: 'renderLeaderboard', line: 3480, category: 'AI Leaderboard Rendering', desc: 'Renders the Executive AI Leaderboard ranking clients dynamically as a clean horizontal bar chart with business icons.' },
+  { name: 'renderBlocker', line: 3747, category: '4 Blocker Portfolio View Rendering', desc: 'Compiles and renders the 2x2 grid quadrant view of all mapped AI solutions, reflecting FTE benefits in status-colored bubbles.' },
+  { name: 'makeBlockerResizable', line: 3825, category: '4 Blocker Portfolio View Rendering', desc: 'Attaches a drag handle to the right edge of the centered 4 blocker container to support manual width adjustment and local storage persistence.' }
 ];
 
 window.renderLeaderboard = function() {
@@ -3680,5 +4213,241 @@ window.renderLeaderboard = function() {
     `;
     container.appendChild(div);
   });
+};
+
+function getAutoBlockerInsightsText() {
+  const activeRowIds = new Set(state.rows.map(r => r.id));
+  const sums = {
+    'In progress': { fte: 0, cost: 0, count: 0 },
+    'Deployed': { fte: 0, cost: 0, count: 0 },
+    'Awaiting client approvals': { fte: 0, cost: 0, count: 0 },
+    'Potential but lack CBA': { fte: 0, cost: 0, count: 0 }
+  };
+
+  Object.keys(state.cellData).forEach(key => {
+    const parts = key.split('::');
+    if (parts.length < 2) return;
+    const rowId = parts[0];
+    if (!activeRowIds.has(rowId)) return;
+
+    const row = state.rows.find(r => r.id === rowId);
+    const cell = state.cellData[key];
+    const fteVal = parseFloat(cell.fte);
+    if (isNaN(fteVal) || fteVal <= 0) return;
+
+    const status = cell.status;
+    if (sums[status] !== undefined) {
+      const costVal = row ? parseFloat(row.implementationCost) : 0;
+      const costAmt = isNaN(costVal) || costVal <= 0 ? 0 : costVal;
+      sums[status].fte += fteVal;
+      sums[status].cost += costAmt;
+      sums[status].count++;
+    }
+  });
+
+  const lines = [
+    `• Deployed: ${sums['Deployed'].count} solutions yielding ${sums['Deployed'].fte.toFixed(1)} FTE benefit (Total Cost: $${sums['Deployed'].cost.toLocaleString()}).`,
+    `• In Progress: ${sums['In progress'].count} solutions targeting ${sums['In progress'].fte.toFixed(1)} FTE benefit (Total Cost: $${sums['In progress'].cost.toLocaleString()}).`,
+    `• Potential but lack CBA: ${sums['Potential but lack CBA'].count} solutions representing ${sums['Potential but lack CBA'].fte.toFixed(1)} FTE benefit (Total Cost: $${sums['Potential but lack CBA'].cost.toLocaleString()}).`,
+    `• Awaiting Client Approval: ${sums['Awaiting client approvals'].count} solutions targeting ${sums['Awaiting client approvals'].fte.toFixed(1)} FTE benefit (Total Cost: $${sums['Awaiting client approvals'].cost.toLocaleString()}).`
+  ];
+
+  return lines.join('\n');
+}
+
+window.handleBlockerInsightsInput = function(value) {
+  state.blockerInsights = value;
+  state.blockerInsightsManuallyEdited = true;
+  saveData();
+};
+
+window.regenerateBlockerInsights = function() {
+  state.blockerInsights = getAutoBlockerInsightsText();
+  state.blockerInsightsManuallyEdited = false;
+  const txt = document.getElementById('blockerInsightsText');
+  if (txt) {
+    txt.value = state.blockerInsights;
+  }
+  saveData();
+};
+
+window.renderBlocker = function() {
+  makeBlockerResizable();
+  const inprogressContent = document.getElementById('bubbles-inprogress');
+  const deployedContent = document.getElementById('bubbles-deployed');
+  const awaitingContent = document.getElementById('bubbles-awaiting');
+  const potentialContent = document.getElementById('bubbles-potential');
+
+  if (!inprogressContent || !deployedContent || !awaitingContent || !potentialContent) return;
+
+  inprogressContent.innerHTML = '';
+  deployedContent.innerHTML = '';
+  awaitingContent.innerHTML = '';
+  potentialContent.innerHTML = '';
+
+  const activeRowIds = new Set(state.rows.map(r => r.id));
+
+  // Initialize accumulators for totals inside each quadrant
+  const sums = {
+    'In progress': { fte: 0, cost: 0 },
+    'Deployed': { fte: 0, cost: 0 },
+    'Awaiting client approvals': { fte: 0, cost: 0 },
+    'Potential but lack CBA': { fte: 0, cost: 0 }
+  };
+
+  // Loop through cellData to find allocations
+  Object.keys(state.cellData).forEach(key => {
+    const parts = key.split('::');
+    if (parts.length < 2) return;
+    const rowId = parts[0];
+    const assetName = parts[1];
+
+    if (!activeRowIds.has(rowId)) return;
+
+    const row = state.rows.find(r => r.id === rowId);
+    const clientName = row ? (row.client || 'Unknown Client') : 'Unknown Client';
+
+    const cell = state.cellData[key];
+    const fteVal = parseFloat(cell.fte);
+    if (isNaN(fteVal) || fteVal <= 0) return;
+
+    const status = cell.status;
+
+    let bgStyle = '';
+    if (status === 'Deployed') {
+      bgStyle = 'background-color: var(--status-deployed); color: var(--text-deployed);';
+    } else if (status === 'Potential but lack CBA') {
+      bgStyle = 'background-color: var(--status-potential); color: var(--text-potential);';
+    } else if (status === 'In progress') {
+      bgStyle = 'background-color: var(--status-inprogress); color: var(--text-inprogress);';
+    } else if (status === 'Awaiting client approvals') {
+      bgStyle = 'background-color: var(--status-awaiting); color: var(--text-awaiting);';
+    } else {
+      return; // Ignore other statuses
+    }
+
+    const costVal = row ? parseFloat(row.implementationCost) : 0;
+    const costAmt = isNaN(costVal) || costVal <= 0 ? 0 : costVal;
+    const costStr = costAmt === 0 ? '$0' : `$${costAmt.toLocaleString()}`;
+
+    // Accumulate quadrant totals
+    sums[status].fte += fteVal;
+    sums[status].cost += costAmt;
+
+    const scale = Math.max(0.6, Math.min(2.5, 0.6 + Math.sqrt(fteVal) * 0.4)) * 0.8;
+
+    const bubbleItem = document.createElement('div');
+    bubbleItem.className = 'solution-bubble-item';
+    bubbleItem.style.setProperty('--bubble-scale', scale);
+    bubbleItem.innerHTML = `
+      <div class="solution-bubble" style="${bgStyle}">
+        <span class="solution-bubble-value">${fteVal}</span>
+        <span class="solution-bubble-unit">FTE</span>
+      </div>
+      <div style="display:flex; flex-direction:column; justify-content:center;">
+        <span class="solution-bubble-label">${escHtml(assetName)}</span>
+        <div style="display:flex; align-items:center; gap:4px; margin-top:2px;">
+          <span class="solution-bubble-cost">Cost: ${costStr}</span>
+          <span style="color: #ccc; font-size: 9px; font-weight: normal; user-select: none;">|</span>
+          <span class="solution-bubble-client">${escHtml(clientName)}</span>
+        </div>
+      </div>
+    `;
+
+    if (status === 'In progress') {
+      inprogressContent.appendChild(bubbleItem);
+    } else if (status === 'Deployed') {
+      deployedContent.appendChild(bubbleItem);
+    } else if (status === 'Awaiting client approvals') {
+      awaitingContent.appendChild(bubbleItem);
+    } else if (status === 'Potential but lack CBA') {
+      potentialContent.appendChild(bubbleItem);
+    }
+  });
+
+  // Render summaries to quadrant badges
+  const updateSummary = (statusName, key) => {
+    const sumEl = document.getElementById(`sum-${key}`);
+    if (sumEl) {
+      sumEl.innerHTML = `
+        <span class="summary-item">Benefit: <strong>${sums[statusName].fte.toFixed(1)} FTE</strong></span>
+        <span class="summary-item">Cost: <strong>$${sums[statusName].cost.toLocaleString()}</strong></span>
+      `;
+    }
+  };
+  updateSummary('In progress', 'inprogress');
+  updateSummary('Deployed', 'deployed');
+  updateSummary('Awaiting client approvals', 'awaiting');
+  updateSummary('Potential but lack CBA', 'potential');
+
+  // Handle blocker insights textarea updates
+  const txt = document.getElementById('blockerInsightsText');
+  if (txt) {
+    if (!state.blockerInsightsManuallyEdited) {
+      state.blockerInsights = getAutoBlockerInsightsText();
+    }
+    txt.value = state.blockerInsights;
+  }
+
+  // Fallback if quadrants are completely empty
+  const checkEmpty = (el, statusName) => {
+    if (el.children.length === 0) {
+      el.innerHTML = `<div style="margin: auto; color: #bbb; font-size: 10px; font-style: italic;">No ${statusName} assets mapped</div>`;
+    }
+  };
+  checkEmpty(inprogressContent, 'In progress');
+  checkEmpty(deployedContent, 'Deployed');
+  checkEmpty(awaitingContent, 'Awaiting Client Approval');
+  checkEmpty(potentialContent, 'Potential');
+};
+
+window.makeBlockerResizable = function() {
+  const container = document.querySelector('.blocker-container');
+  if (!container) return;
+
+  if (container.querySelector('.blocker-resize-handle')) return;
+
+  const handle = document.createElement('div');
+  handle.className = 'blocker-resize-handle';
+  container.appendChild(handle);
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.pageX;
+    const startWidth = container.offsetWidth;
+    container.classList.add('resizing');
+
+    const onMouseMove = (moveEvent) => {
+      const dx = moveEvent.pageX - startX;
+      const newWidth = Math.max(400, Math.min(window.innerWidth - 60, startWidth + dx * 2));
+      container.style.width = `${newWidth}px`;
+      container.style.minWidth = `${newWidth}px`;
+      container.style.maxWidth = `${newWidth}px`;
+
+      localStorage.setItem('blocker_container_width', `${newWidth}px`);
+    };
+
+    const onMouseUp = () => {
+      container.classList.remove('resizing');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+
+  const savedWidth = localStorage.getItem('blocker_container_width');
+  if (savedWidth) {
+    container.style.width = savedWidth;
+    container.style.minWidth = savedWidth;
+    container.style.maxWidth = savedWidth;
+  } else {
+    container.style.width = '800px';
+    container.style.minWidth = '800px';
+    container.style.maxWidth = '800px';
+  }
 };
 

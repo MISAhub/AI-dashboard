@@ -1,20 +1,24 @@
 {
   "assets": [
-    "AP Helpdesk",
+    "Gen AI AP Helpdesk",
     "Automated AP",
     "Collect+",
-    "OTB Helpdesk",
+    "Agentic OTB Helpdesk",
     "Agentic AR Clearing",
     "Agentic Order Creation and Fulfillment",
     "Agentic Collections",
     "Agentic Disputes and Deductions",
     "Smart Deductions",
     "Cash App Advisor",
+    "Agentic AP Helpdesk",
     "Gen AI OCR",
+    "Gen AI AP helpdesk",
     "Deductions Agentic AI",
     "iVMD Agentic",
+    "Agentic AP helpdesk",
     "Agentic IDVS",
     "Orby AI",
+    "Gen AI AP Helpdesk - CSS",
     "Agentic controller cockpit",
     "KM Assist",
     "Bratislava Cash Application",
@@ -24,6 +28,7 @@
     "Gen AI IDVS Smart Converter",
     "Agentic AP Exception Concierge",
     "Agentic Vendor master creation",
+    "GenAI OTB Helpdesk",
     "Agentic Narrative generation"
   ],
   "owners": {
@@ -47,7 +52,7 @@
   },
   "rows": [
     {
-      "id": "row_1781102720319_7712",
+      "id": "row_1781094071910_8793",
       "client": "ACCOR",
       "tower": "RTR",
       "region": "EMEA",
@@ -74,7 +79,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720319_6429",
+      "id": "row_1781094071910_8060",
       "client": "ASSOCIATED BRITISH FOODS PLC",
       "tower": "PTP",
       "region": "EMEA",
@@ -86,7 +91,7 @@
       "pipelineFte": 2,
       "decision": "Ideation",
       "targetDate": "10-May-26",
-      "initiative": "AP Helpdesk",
+      "initiative": "Gen AI AP Helpdesk",
       "initiativeType": "Gen AI",
       "estimatedFteBenefit": 2,
       "implementationCost": "",
@@ -101,7 +106,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720319_8150",
+      "id": "row_1781094071910_8202",
       "client": "BAIN CAPITAL",
       "tower": "PTP",
       "region": "EMEA",
@@ -128,7 +133,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_8264",
+      "id": "row_1781094071910_7720",
       "client": "BAIN CAPITAL",
       "tower": "OTC",
       "region": "EMEA",
@@ -155,7 +160,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_8161",
+      "id": "row_1781094071910_6292",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -167,7 +172,7 @@
       "pipelineFte": 19,
       "decision": "Deployed",
       "targetDate": "",
-      "initiative": "OTB Helpdesk",
+      "initiative": "Agentic OTB Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 19,
       "implementationCost": "",
@@ -182,7 +187,7 @@
       "realizedFte": 2
     },
     {
-      "id": "row_1781102720320_1896",
+      "id": "row_1781094071911_4993",
       "client": "BAYER",
       "tower": "RTR",
       "region": "EMEA",
@@ -209,7 +214,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_8736",
+      "id": "row_1781094071911_29",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -236,7 +241,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_2568",
+      "id": "row_1781094071911_9175",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -263,7 +268,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_3369",
+      "id": "row_1781094071911_132",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -290,7 +295,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_1120",
+      "id": "row_1781094071911_8048",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -317,7 +322,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_2324",
+      "id": "row_1781094071911_4861",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -344,7 +349,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_6060",
+      "id": "row_1781094071911_7678",
       "client": "BAYER",
       "tower": "OTC",
       "region": "EMEA",
@@ -371,7 +376,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_6346",
+      "id": "row_1781094071911_9884",
       "client": "CAT LOGISTICS",
       "tower": "PTP",
       "region": "EMEA",
@@ -398,7 +403,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_7947",
+      "id": "row_1781094071911_9121",
       "client": "CORTE INGLES S.A., E",
       "tower": "PTP",
       "region": "EMEA",
@@ -410,7 +415,7 @@
       "pipelineFte": "",
       "decision": "Deployed",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": "",
       "implementationCost": "",
@@ -425,7 +430,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_6092",
+      "id": "row_1781094071911_8498",
       "client": "COTY INC.",
       "tower": "PTP",
       "region": "EMEA",
@@ -452,7 +457,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_3552",
+      "id": "row_1781094071911_3105",
       "client": "COTY INC.",
       "tower": "PTP",
       "region": "EMEA",
@@ -464,7 +469,7 @@
       "pipelineFte": 2,
       "decision": "Deployed",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Gen AI AP helpdesk",
       "initiativeType": "Gen AI",
       "estimatedFteBenefit": 2,
       "implementationCost": 0,
@@ -479,7 +484,7 @@
       "realizedFte": 1
     },
     {
-      "id": "row_1781102720320_7564",
+      "id": "row_1781094071911_5478",
       "client": "COTY INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -506,7 +511,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_1490",
+      "id": "row_1781094071911_6685",
       "client": "COTY INC.",
       "tower": "RTR",
       "region": "EMEA",
@@ -533,7 +538,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_1776",
+      "id": "row_1781094071911_5807",
       "client": "DANONE",
       "tower": "PTP",
       "region": "EMEA",
@@ -560,7 +565,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_3006",
+      "id": "row_1781094071911_950",
       "client": "DANONE",
       "tower": "PTP",
       "region": "EMEA",
@@ -572,7 +577,7 @@
       "pipelineFte": 12,
       "decision": "Ideation",
       "targetDate": "30-Jun-26",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": "",
       "implementationCost": "",
@@ -587,7 +592,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_5579",
+      "id": "row_1781094071911_9860",
       "client": "DAVIDE CAMPARI-MILANO S.P.A",
       "tower": "RTR",
       "region": "EMEA",
@@ -614,7 +619,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_8594",
+      "id": "row_1781094071911_2091",
       "client": "DAVIDE CAMPARI-MILANO S.P.A",
       "tower": "PTP",
       "region": "EMEA",
@@ -641,7 +646,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720320_6919",
+      "id": "row_1781094071911_1294",
       "client": "DAVIDE CAMPARI-MILANO S.P.A",
       "tower": "OTC",
       "region": "EMEA",
@@ -668,7 +673,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_3158",
+      "id": "row_1781094071912_3250",
       "client": "DAVIDE CAMPARI-MILANO S.P.A",
       "tower": "PTP",
       "region": "EMEA",
@@ -680,7 +685,7 @@
       "pipelineFte": 1,
       "decision": "Awaiting client approvals",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Gen AI AP helpdesk",
       "initiativeType": "Gen AI",
       "estimatedFteBenefit": 1,
       "implementationCost": "",
@@ -695,7 +700,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_6125",
+      "id": "row_1781094071912_652",
       "client": "ENEL - ENDESA",
       "tower": "RTR",
       "region": "EMEA",
@@ -722,7 +727,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_9198",
+      "id": "row_1781094071912_9670",
       "client": "ENEL - ENDESA",
       "tower": "PTP",
       "region": "EMEA",
@@ -749,7 +754,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_6239",
+      "id": "row_1781094071912_2292",
       "client": "EQUATE",
       "tower": "PTP",
       "region": "EMEA",
@@ -776,7 +781,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_4166",
+      "id": "row_1781094071912_5480",
       "client": "EQUATE",
       "tower": "RTR",
       "region": "EMEA",
@@ -803,7 +808,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_5931",
+      "id": "row_1781094071912_9761",
       "client": "INTERTEK GROUP PLC",
       "tower": "OTC",
       "region": "EMEA",
@@ -830,7 +835,7 @@
       "realizedFte": 2
     },
     {
-      "id": "row_1781102720321_9438",
+      "id": "row_1781094071912_7594",
       "client": "INTERTEK GROUP PLC",
       "tower": "PTP",
       "region": "EMEA",
@@ -842,7 +847,7 @@
       "pipelineFte": 1,
       "decision": "Deployed",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Gen AI AP Helpdesk - CSS",
       "initiativeType": "Gen AI",
       "estimatedFteBenefit": 0,
       "implementationCost": 0,
@@ -857,7 +862,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_8239",
+      "id": "row_1781094071912_9719",
       "client": "J SAINSBURY PLC",
       "tower": "PTP",
       "region": "EMEA",
@@ -869,7 +874,7 @@
       "pipelineFte": 5,
       "decision": "Awaiting client approvals",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 5,
       "implementationCost": "",
@@ -884,7 +889,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_9294",
+      "id": "row_1781094071912_5608",
       "client": "LEGRAND",
       "tower": "RTR",
       "region": "EMEA",
@@ -911,7 +916,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_6034",
+      "id": "row_1781094071912_3781",
       "client": "MINOR INTERNATIONAL PUBLIC CO LTD",
       "tower": "RTR",
       "region": "EMEA",
@@ -938,7 +943,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_2859",
+      "id": "row_1781094071912_1568",
       "client": "MINOR INTERNATIONAL PUBLIC CO LTD",
       "tower": "PTP",
       "region": "EMEA",
@@ -965,7 +970,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_7569",
+      "id": "row_1781094071912_4102",
       "client": "MONDELEZ INTERNATIONAL INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -992,7 +997,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_7519",
+      "id": "row_1781094071912_5198",
       "client": "MONDELEZ INTERNATIONAL INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -1019,7 +1024,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_3",
+      "id": "row_1781094071913_5484",
       "client": "MONDELEZ INTERNATIONAL INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -1046,7 +1051,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720321_768",
+      "id": "row_1781094071913_1826",
       "client": "MONDELEZ INTERNATIONAL INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -1073,7 +1078,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_7098",
+      "id": "row_1781094071913_1290",
       "client": "MONDELEZ INTERNATIONAL INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -1100,7 +1105,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_791",
+      "id": "row_1781094071913_8245",
       "client": "MONDELEZ INTERNATIONAL INC.",
       "tower": "OTC",
       "region": "EMEA",
@@ -1127,7 +1132,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_751",
+      "id": "row_1781094071913_1748",
       "client": "ODIDO NETHERLANDS BV",
       "tower": "PTP",
       "region": "EMEA",
@@ -1154,7 +1159,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_48",
+      "id": "row_1781094071913_8664",
       "client": "ODIDO NETHERLANDS BV",
       "tower": "RTR",
       "region": "EMEA",
@@ -1181,7 +1186,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_7631",
+      "id": "row_1781094071913_6998",
       "client": "ODIDO NETHERLANDS BV",
       "tower": "OTC",
       "region": "EMEA",
@@ -1208,7 +1213,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_7870",
+      "id": "row_1781094071913_7841",
       "client": "PETRA DIAMONDS SOUTHERN AFRICA PTY",
       "tower": "PTP",
       "region": "EMEA",
@@ -1235,7 +1240,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_7285",
+      "id": "row_1781094071913_1457",
       "client": "Primark",
       "tower": "PTP",
       "region": "EMEA",
@@ -1247,7 +1252,7 @@
       "pipelineFte": 2,
       "decision": "Awaiting client approvals",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 2,
       "implementationCost": "",
@@ -1262,7 +1267,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_7514",
+      "id": "row_1781094071913_5738",
       "client": "Primark_GBS",
       "tower": "RTR",
       "region": "EMEA",
@@ -1289,7 +1294,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_194",
+      "id": "row_1781094071913_1901",
       "client": "RADISSON HOTEL GROUP",
       "tower": "PTP",
       "region": "EMEA",
@@ -1316,7 +1321,7 @@
       "realizedFte": 1
     },
     {
-      "id": "row_1781102720322_3378",
+      "id": "row_1781094071914_6635",
       "client": "RADISSON HOTEL GROUP",
       "tower": "RTR",
       "region": "EMEA",
@@ -1343,7 +1348,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720322_102",
+      "id": "row_1781094071914_941",
       "client": "RADISSON HOTEL GROUP",
       "tower": "PTP",
       "region": "EMEA",
@@ -1355,7 +1360,7 @@
       "pipelineFte": 3,
       "decision": "Deployed",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 3,
       "implementationCost": "",
@@ -1370,7 +1375,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_7504",
+      "id": "row_1781094071914_8949",
       "client": "SANOFI - Opella",
       "tower": "PTP",
       "region": "EMEA",
@@ -1397,7 +1402,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_4244",
+      "id": "row_1781094071914_3638",
       "client": "SANOFI - Opella",
       "tower": "PTP",
       "region": "EMEA",
@@ -1409,7 +1414,7 @@
       "pipelineFte": 3,
       "decision": "Awaiting client approvals",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 3,
       "implementationCost": "",
@@ -1424,7 +1429,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_2773",
+      "id": "row_1781094071914_1697",
       "client": "SANOFI - Opella",
       "tower": "PTP",
       "region": "EMEA",
@@ -1451,7 +1456,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_2551",
+      "id": "row_1781094071914_914",
       "client": "SANOFI - Pharma",
       "tower": "PTP",
       "region": "EMEA",
@@ -1463,7 +1468,7 @@
       "pipelineFte": 7,
       "decision": "Ideation",
       "targetDate": "",
-      "initiative": "AP Helpdesk",
+      "initiative": "Agentic AP Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 7,
       "implementationCost": "",
@@ -1478,7 +1483,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_7980",
+      "id": "row_1781094071914_1292",
       "client": "SANOFI - Pharma",
       "tower": "PTP",
       "region": "EMEA",
@@ -1505,7 +1510,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_6019",
+      "id": "row_1781094071914_6600",
       "client": "SANOFI - Pharma",
       "tower": "PTP",
       "region": "EMEA",
@@ -1532,7 +1537,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_9795",
+      "id": "row_1781094071914_1256",
       "client": "SERCO PLC",
       "tower": "OTC",
       "region": "EMEA",
@@ -1544,7 +1549,7 @@
       "pipelineFte": 3,
       "decision": "In progress",
       "targetDate": "",
-      "initiative": "OTB Helpdesk",
+      "initiative": "GenAI OTB Helpdesk",
       "initiativeType": "Agentic",
       "estimatedFteBenefit": 3,
       "implementationCost": "",
@@ -1559,7 +1564,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_2283",
+      "id": "row_1781094071914_9474",
       "client": "SERCO PLC",
       "tower": "PTP",
       "region": "EMEA",
@@ -1586,7 +1591,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_3110",
+      "id": "row_1781094071914_6363",
       "client": "SERCO PLC",
       "tower": "FP&A",
       "region": "EMEA",
@@ -1613,7 +1618,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_2933",
+      "id": "row_1781094071914_3600",
       "client": "TIP TRAILER",
       "tower": "PTP",
       "region": "EMEA",
@@ -1640,7 +1645,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720323_9889",
+      "id": "row_1781094071915_7483",
       "client": "TIP TRAILER SERVICES MANAGEMENT BV",
       "tower": "PTP",
       "region": "EMEA",
@@ -1667,7 +1672,7 @@
       "realizedFte": 1
     },
     {
-      "id": "row_1781102720324_2030",
+      "id": "row_1781094071915_2172",
       "client": "TRINSEO SA",
       "tower": "PTP",
       "region": "EMEA",
@@ -1694,7 +1699,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720324_4887",
+      "id": "row_1781094071915_8600",
       "client": "VELUX",
       "tower": "RTR",
       "region": "EMEA",
@@ -1721,7 +1726,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720324_4356",
+      "id": "row_1781094071915_9798",
       "client": "VELUX",
       "tower": "PTP",
       "region": "EMEA",
@@ -1748,7 +1753,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720324_4609",
+      "id": "row_1781094071915_6677",
       "client": "VELUX",
       "tower": "OTC",
       "region": "EMEA",
@@ -1775,7 +1780,7 @@
       "realizedFte": ""
     },
     {
-      "id": "row_1781102720324_3186",
+      "id": "row_1781094071915_5750",
       "client": "Zurich Insurance Group",
       "tower": "OTC",
       "region": "EMEA",
@@ -1803,203 +1808,203 @@
     }
   ],
   "cellData": {
-    "row_1781102720319_6429::AP Helpdesk": {
+    "row_1781094071910_8060::Gen AI AP Helpdesk": {
       "fte": 2,
       "status": "Ideation"
     },
-    "row_1781102720319_8150::Automated AP": {
+    "row_1781094071910_8202::Automated AP": {
       "fte": 7,
       "status": "Ideation"
     },
-    "row_1781102720320_8264::Collect+": {
+    "row_1781094071910_7720::Collect+": {
       "fte": 5,
       "status": "Ideation"
     },
-    "row_1781102720320_8161::OTB Helpdesk": {
+    "row_1781094071910_6292::Agentic OTB Helpdesk": {
       "fte": 19,
       "status": "Deployed"
     },
-    "row_1781102720320_8736::Agentic AR Clearing": {
+    "row_1781094071911_29::Agentic AR Clearing": {
       "fte": 10,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720320_2568::Agentic Order Creation and Fulfillment": {
+    "row_1781094071911_9175::Agentic Order Creation and Fulfillment": {
       "fte": 5,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720320_3369::Agentic Collections": {
+    "row_1781094071911_132::Agentic Collections": {
       "fte": 27,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720320_1120::Agentic Disputes and Deductions": {
+    "row_1781094071911_8048::Agentic Disputes and Deductions": {
       "fte": 5,
       "status": "Ideation"
     },
-    "row_1781102720320_2324::Smart Deductions": {
+    "row_1781094071911_4861::Smart Deductions": {
       "fte": 7,
       "status": "Potential but lack CBA"
     },
-    "row_1781102720320_6060::Cash App Advisor": {
+    "row_1781094071911_7678::Cash App Advisor": {
       "fte": 20,
       "status": "In progress"
     },
-    "row_1781102720320_7947::AP Helpdesk": {
+    "row_1781094071911_9121::Agentic AP Helpdesk": {
       "fte": 0,
       "status": "Deployed"
     },
-    "row_1781102720320_6092::Gen AI OCR": {
+    "row_1781094071911_8498::Gen AI OCR": {
       "fte": 6,
       "status": "In progress"
     },
-    "row_1781102720320_3552::AP Helpdesk": {
+    "row_1781094071911_3105::Gen AI AP helpdesk": {
       "fte": 2,
       "status": "Deployed"
     },
-    "row_1781102720320_7564::Deductions Agentic AI": {
+    "row_1781094071911_5478::Deductions Agentic AI": {
       "fte": 8,
       "status": "Potential but lack CBA"
     },
-    "row_1781102720320_1776::iVMD Agentic": {
+    "row_1781094071911_5807::iVMD Agentic": {
       "fte": 14,
       "status": "Ideation"
     },
-    "row_1781102720320_3006::AP Helpdesk": {
+    "row_1781094071911_950::Agentic AP helpdesk": {
       "fte": 0,
       "status": "Ideation"
     },
-    "row_1781102720320_8594::Agentic IDVS": {
+    "row_1781094071911_2091::Agentic IDVS": {
       "fte": 1,
       "status": "Deployed"
     },
-    "row_1781102720320_6919::Cash App Advisor": {
+    "row_1781094071911_1294::Cash App Advisor": {
       "fte": 3,
       "status": "Deployed"
     },
-    "row_1781102720321_3158::AP Helpdesk": {
+    "row_1781094071912_3250::Gen AI AP helpdesk": {
       "fte": 1,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720321_9198::Orby AI": {
+    "row_1781094071912_9670::Orby AI": {
       "fte": 1,
       "status": "Deployed"
     },
-    "row_1781102720321_5931::Orby AI": {
+    "row_1781094071912_9761::Orby AI": {
       "fte": 2,
       "status": "Deployed"
     },
-    "row_1781102720321_9438::AP Helpdesk": {
+    "row_1781094071912_7594::Gen AI AP Helpdesk - CSS": {
       "fte": 0,
       "status": "Deployed"
     },
-    "row_1781102720321_8239::AP Helpdesk": {
+    "row_1781094071912_9719::Agentic AP Helpdesk": {
       "fte": 5,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720321_9294::Agentic controller cockpit": {
+    "row_1781094071912_5608::Agentic controller cockpit": {
       "fte": 0,
       "status": "Ideation"
     },
-    "row_1781102720321_6034::KM Assist": {
+    "row_1781094071912_3781::KM Assist": {
       "fte": 0,
       "status": "Deployed"
     },
-    "row_1781102720321_2859::KM Assist": {
+    "row_1781094071912_1568::KM Assist": {
       "fte": 0,
       "status": "Deployed"
     },
-    "row_1781102720321_7569::Bratislava Cash Application": {
+    "row_1781094071912_4102::Bratislava Cash Application": {
       "fte": 0,
       "status": "Deployed"
     },
-    "row_1781102720321_7519::Agentic Order Creation and Fulfillment": {
+    "row_1781094071912_5198::Agentic Order Creation and Fulfillment": {
       "fte": 26,
       "status": "Ideation"
     },
-    "row_1781102720321_3::Agentic Collections": {
+    "row_1781094071913_5484::Agentic Collections": {
       "fte": 6,
       "status": "Ideation"
     },
-    "row_1781102720321_768::Agentic Disputes and Deductions": {
+    "row_1781094071913_1826::Agentic Disputes and Deductions": {
       "fte": 33,
       "status": "Ideation"
     },
-    "row_1781102720322_7098::Agentic Billing": {
+    "row_1781094071913_1290::Agentic Billing": {
       "fte": 2,
       "status": "Ideation"
     },
-    "row_1781102720322_791::Agentic Master Data Management": {
+    "row_1781094071913_8245::Agentic Master Data Management": {
       "fte": 11,
       "status": "Ideation"
     },
-    "row_1781102720322_7870::Power Platform - Custom build": {
+    "row_1781094071913_7841::Power Platform - Custom build": {
       "fte": 2,
       "status": "Ideation"
     },
-    "row_1781102720322_7285::AP Helpdesk": {
+    "row_1781094071913_1457::Agentic AP Helpdesk": {
       "fte": 2,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720322_7514::Agentic controller cockpit": {
+    "row_1781094071913_5738::Agentic controller cockpit": {
       "fte": 0,
       "status": "Ideation"
     },
-    "row_1781102720322_194::Agentic IDVS": {
+    "row_1781094071913_1901::Agentic IDVS": {
       "fte": 1,
       "status": "Deployed"
     },
-    "row_1781102720322_102::AP Helpdesk": {
+    "row_1781094071914_941::Agentic AP Helpdesk": {
       "fte": 3,
       "status": "Deployed"
     },
-    "row_1781102720323_7504::Gen AI IDVS Smart Converter": {
+    "row_1781094071914_8949::Gen AI IDVS Smart Converter": {
       "fte": 4,
       "status": "Deployed"
     },
-    "row_1781102720323_4244::AP Helpdesk": {
+    "row_1781094071914_3638::Agentic AP Helpdesk": {
       "fte": 3,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720323_2773::Agentic AP Exception Concierge": {
+    "row_1781094071914_1697::Agentic AP Exception Concierge": {
       "fte": 8,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720323_2551::AP Helpdesk": {
+    "row_1781094071914_914::Agentic AP Helpdesk": {
       "fte": 7,
       "status": "Ideation"
     },
-    "row_1781102720323_7980::Agentic Vendor master creation": {
+    "row_1781094071914_1292::Agentic Vendor master creation": {
       "fte": 7,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720323_6019::Gen AI IDVS Smart Converter": {
+    "row_1781094071914_6600::Gen AI IDVS Smart Converter": {
       "fte": 6,
       "status": "Deployed"
     },
-    "row_1781102720323_9795::OTB Helpdesk": {
+    "row_1781094071914_1256::GenAI OTB Helpdesk": {
       "fte": 3,
       "status": "In progress"
     },
-    "row_1781102720323_2283::Automated AP": {
+    "row_1781094071914_9474::Automated AP": {
       "fte": 8,
       "status": "In progress"
     },
-    "row_1781102720323_3110::Agentic Narrative generation": {
+    "row_1781094071914_6363::Agentic Narrative generation": {
       "fte": 11,
       "status": "Ideation"
     },
-    "row_1781102720323_2933::Agentic IDVS": {
+    "row_1781094071914_3600::Agentic IDVS": {
       "fte": 1,
       "status": "In progress"
     },
-    "row_1781102720323_9889::Agentic IDVS": {
+    "row_1781094071915_7483::Agentic IDVS": {
       "fte": 1,
       "status": "Deployed"
     },
-    "row_1781102720324_4356::Automated AP": {
+    "row_1781094071915_9798::Automated AP": {
       "fte": 5,
       "status": "Awaiting client approvals"
     },
-    "row_1781102720324_3186::Agentic Collections": {
+    "row_1781094071915_5750::Agentic Collections": {
       "fte": 11,
       "status": "Awaiting client approvals"
     }
@@ -2079,6 +2084,6 @@
     "Fixed",
     "Value"
   ],
-  "blockerInsights": "• Deployed: 11 solutions yielding 43.0 FTE benefit (Total Cost: $0).\n• In Progress: 5 solutions targeting 38.0 FTE benefit (Total Cost: $0).\n• Potential but lack CBA: 2 solutions representing 15.0 FTE benefit (Total Cost: $0).\n• Awaiting Client Approval: 11 solutions targeting 84.0 FTE benefit (Total Cost: $0).",
+  "blockerInsights": "",
   "blockerInsightsManuallyEdited": false
 }
